@@ -27,7 +27,8 @@ type DatabaseConfiguration struct {
 
 // RedisConfiguration stores data for Redis connection
 type RedisConfiguration struct {
-	Addr string
+	Addr            string
+	DefaultCacheTTL string
 }
 
 // ElasticsearchConfiguration stores data for Elasticsearch connection
@@ -49,6 +50,7 @@ func InitConfig() error {
 	viper.SetDefault("neo4j.uri", "bolt://localhost:7687")
 	viper.SetDefault("redis.addr", "localhost:6379")
 	viper.SetDefault("elasticsearch.url", "http://localhost:9200")
+	viper.SetDefault("redis.defaultCacheTTL", "10m")
 
 	// Attempt to read the config file
 	if err := viper.ReadInConfig(); err != nil {

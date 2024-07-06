@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/dev-mohitbeniwal/echo/api/audit"
+	echo_errors "github.com/dev-mohitbeniwal/echo/api/errors"
 	logger "github.com/dev-mohitbeniwal/echo/api/logging"
 	"github.com/dev-mohitbeniwal/echo/api/model"
 )
@@ -112,18 +113,31 @@ func (dao *PolicyDAO) UpdatePolicy(ctx context.Context, policy model.Policy, use
 
 	_, err = session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (p:Policy {id: $id})
-        SET p.name = $name, p.description = $description, p.effect = $effect,
-            p.priority = $priority, p.version = $version, p.updatedAt = $updatedAt,
-            p.active = $active, p.activationDate = $activationDate, p.deactivationDate = $deactivationDate
-        RETURN p
-        `
+				MATCH (p:Policy {id: $id})
+				SET p.name = $name, p.description = $description, p.effect = $effect,
+					p.priority = $priority, p.version = $version, p.updatedAt = $updatedAt, p.createdAt = $createdAt,
+					p.active = $active, p.activationDate = $activationDate, p.deactivationDate = $deactivationDate,
+					p.subjects = $subjects, p.resources = $resources, p.actions = $actions, p.conditions = $conditions
+				RETURN p
+				`
+
+		// Convert subjects, resources, actions, and conditions to JSON strings
+		subjectsJSON, _ := json.Marshal(policy.Subjects)
+		resourcesJSON, _ := json.Marshal(policy.Resources)
+		actionsJSON, _ := json.Marshal(policy.Actions)
+		conditionsJSON, _ := json.Marshal(policy.Conditions)
+
 		parameters := map[string]interface{}{
 			"id": policy.ID, "name": policy.Name, "description": policy.Description,
 			"effect": policy.Effect, "priority": policy.Priority, "version": policy.Version,
 			"updatedAt": time.Now().Format(time.RFC3339),
+			"createdAt": oldPolicy.CreatedAt.Format(time.RFC3339),
 			"active":    policy.Active, "activationDate": formatNullableTime(policy.ActivationDate),
 			"deactivationDate": formatNullableTime(policy.DeactivationDate),
+			"subjects":         string(subjectsJSON),
+			"resources":        string(resourcesJSON),
+			"actions":          string(actionsJSON),
+			"conditions":       string(conditionsJSON),
 		}
 		result, err := transaction.Run(query, parameters)
 		if err != nil {
@@ -131,7 +145,7 @@ func (dao *PolicyDAO) UpdatePolicy(ctx context.Context, policy model.Policy, use
 		}
 		if result.Next() {
 			node := result.Record().Values[0].(neo4j.Node)
-			updatedPolicy = mapNodeToPolicy(node)
+			updatedPolicy, _ = mapNodeToPolicy(node)
 			return nil, nil
 		}
 		return nil, ErrPolicyNotFound
@@ -246,7 +260,14 @@ func (dao *PolicyDAO) GetPolicy(ctx context.Context, policyID string) (*model.Po
 
 	if result.Next() {
 		node := result.Record().Values[0].(neo4j.Node)
-		policy := mapNodeToPolicy(node)
+		policy, err := mapNodeToPolicy(node)
+		if err != nil {
+			logger.Error("Failed to map policy node to struct",
+				zap.Error(err),
+				zap.String("policyID", policyID),
+				zap.Duration("duration", time.Since(start)))
+			return nil, fmt.Errorf("failed to map policy node to struct: %w", err)
+		}
 		logger.Info("Policy retrieved successfully",
 			zap.String("policyID", policyID),
 			zap.Duration("duration", time.Since(start)))
@@ -256,7 +277,7 @@ func (dao *PolicyDAO) GetPolicy(ctx context.Context, policyID string) (*model.Po
 	logger.Warn("Policy not found",
 		zap.String("policyID", policyID),
 		zap.Duration("duration", time.Since(start)))
-	return nil, ErrPolicyNotFound
+	return nil, echo_errors.ErrPolicyNotFound
 }
 
 // ListPolicies retrieves all policies from Neo4j with pagination
@@ -288,7 +309,13 @@ func (dao *PolicyDAO) ListPolicies(ctx context.Context, limit int, offset int) (
 	var policies []*model.Policy
 	for result.Next() {
 		node := result.Record().Values[0].(neo4j.Node)
-		policy := mapNodeToPolicy(node)
+		policy, err := mapNodeToPolicy(node)
+		if err != nil {
+			logger.Error("Failed to map policy node to struct",
+				zap.Error(err),
+				zap.Duration("duration", time.Since(start)))
+			return nil, fmt.Errorf("failed to map policy node to struct: %w", err)
+		}
 		policies = append(policies, policy)
 	}
 
@@ -344,7 +371,13 @@ func (dao *PolicyDAO) SearchPolicies(ctx context.Context, criteria model.PolicyS
 	var policies []*model.Policy
 	for result.Next() {
 		node := result.Record().Values[0].(neo4j.Node)
-		policy := mapNodeToPolicy(node)
+		policy, err := mapNodeToPolicy(node)
+		if err != nil {
+			logger.Error("Failed to map policy node to struct",
+				zap.Error(err),
+				zap.Duration("duration", time.Since(start)))
+			return nil, fmt.Errorf("failed to map policy node to struct: %w", err)
+		}
 		policies = append(policies, policy)
 	}
 
@@ -409,7 +442,7 @@ func (dao *PolicyDAO) AnalyzePolicyUsage(ctx context.Context, policyID string) (
 	logger.Warn("Policy not found for usage analysis",
 		zap.String("policyID", policyID),
 		zap.Duration("duration", time.Since(start)))
-	return nil, fmt.Errorf("policy not found: %s", policyID)
+	return nil, ErrPolicyNotFound
 }
 
 // Helper function to create change details for audit log
@@ -431,7 +464,7 @@ func createChangeDetails(oldPolicy, newPolicy *model.Policy) json.RawMessage {
 }
 
 // Helper function to map Neo4j Node to Policy struct
-func mapNodeToPolicy(node neo4j.Node) *model.Policy {
+func mapNodeToPolicy(node neo4j.Node) (*model.Policy, error) {
 	props := node.Props
 	policy := &model.Policy{}
 
@@ -439,63 +472,63 @@ func mapNodeToPolicy(node neo4j.Node) *model.Policy {
 	if id, ok := props["id"].(string); ok {
 		policy.ID = id
 	} else {
-		logger.Error("Failed to assert type for policy ID", zap.Any("ID", props["id"]))
+		return nil, fmt.Errorf("failed to assert type for policy ID: %v", props["id"])
 	}
 
 	// Name
 	if name, ok := props["name"].(string); ok {
 		policy.Name = name
 	} else {
-		logger.Error("Failed to assert type for policy name", zap.Any("Name", props["name"]))
+		return nil, fmt.Errorf("failed to assert type for policy name: %v", props["name"])
 	}
 
 	// Description
 	if description, ok := props["description"].(string); ok {
 		policy.Description = description
 	} else {
-		logger.Error("Failed to assert type for policy description", zap.Any("Description", props["description"]))
+		return nil, fmt.Errorf("failed to assert type for policy description: %v", props["description"])
 	}
 
 	// Effect
 	if effect, ok := props["effect"].(string); ok {
 		policy.Effect = effect
 	} else {
-		logger.Error("Failed to assert type for policy effect", zap.Any("Effect", props["effect"]))
+		return nil, fmt.Errorf("failed to assert type for policy effect: %v", props["effect"])
 	}
 
 	// Priority
 	if priority, ok := props["priority"].(int64); ok {
 		policy.Priority = int(priority)
 	} else {
-		logger.Error("Failed to assert type for policy priority", zap.Any("Priority", props["priority"]))
+		return nil, fmt.Errorf("failed to assert type for policy priority: %v", props["priority"])
 	}
 
 	// Version
 	if version, ok := props["version"].(int64); ok {
 		policy.Version = int(version)
 	} else {
-		logger.Error("Failed to assert type for policy version", zap.Any("Version", props["version"]))
+		return nil, fmt.Errorf("failed to assert type for policy version: %v", props["version"])
 	}
 
 	// CreatedAt
 	if createdAt, ok := props["createdAt"].(string); ok {
 		policy.CreatedAt = parseTime(createdAt)
 	} else {
-		logger.Error("Failed to assert type for policy createdAt", zap.Any("CreatedAt", props["createdAt"]))
+		return nil, fmt.Errorf("failed to assert type for policy createdAt: %v", props["createdAt"])
 	}
 
 	// UpdatedAt
 	if updatedAt, ok := props["updatedAt"].(string); ok {
 		policy.UpdatedAt = parseTime(updatedAt)
 	} else {
-		logger.Error("Failed to assert type for policy updatedAt", zap.Any("UpdatedAt", props["updatedAt"]))
+		return nil, fmt.Errorf("failed to assert type for policy updatedAt: %v", props["updatedAt"])
 	}
 
 	// Active
 	if active, ok := props["active"].(bool); ok {
 		policy.Active = active
 	} else {
-		logger.Error("Failed to assert type for policy active", zap.Any("Active", props["active"]))
+		return nil, fmt.Errorf("failed to assert type for policy active: %v", props["active"])
 	}
 
 	// ActivationDate
@@ -512,7 +545,43 @@ func mapNodeToPolicy(node neo4j.Node) *model.Policy {
 		logger.Warn("Deactivation date not found or null", zap.Any("DeactivationDate", props["deactivationDate"]))
 	}
 
-	return policy
+	// Subjects
+	if subjectsJSON, ok := props["subjects"].(string); ok {
+		if err := json.Unmarshal([]byte(subjectsJSON), &policy.Subjects); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal policy subjects: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("failed to assert type for policy subjects: %v", props["subjects"])
+	}
+
+	// Resources
+	if resourcesJSON, ok := props["resources"].(string); ok {
+		if err := json.Unmarshal([]byte(resourcesJSON), &policy.Resources); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal policy resources: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("failed to assert type for policy resources: %v", props["resources"])
+	}
+
+	// Actions
+	if actionsJSON, ok := props["actions"].(string); ok {
+		if err := json.Unmarshal([]byte(actionsJSON), &policy.Actions); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal policy actions: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("failed to assert type for policy actions: %v", props["actions"])
+	}
+
+	// Conditions
+	if conditionsJSON, ok := props["conditions"].(string); ok {
+		if err := json.Unmarshal([]byte(conditionsJSON), &policy.Conditions); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal policy conditions: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("failed to assert type for policy conditions: %v", props["conditions"])
+	}
+
+	return policy, nil
 }
 
 // Helper function to parse time

@@ -2,11 +2,13 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 
+	echo_errors "github.com/dev-mohitbeniwal/echo/api/errors"
 	"github.com/dev-mohitbeniwal/echo/api/model"
 	"github.com/dev-mohitbeniwal/echo/api/service"
 	"github.com/dev-mohitbeniwal/echo/api/util"
@@ -75,7 +77,11 @@ func (pc *PolicyController) UpdatePolicy(c *gin.Context) {
 
 	updatedPolicy, err := pc.policyService.UpdatePolicy(c, policy, userID)
 	if err != nil {
-		util.RespondWithError(c, http.StatusInternalServerError, "Failed to update policy", err)
+		if err == echo_errors.ErrPolicyNotFound {
+			util.RespondWithError(c, http.StatusNotFound, "Policy not found", err)
+		} else {
+			util.RespondWithError(c, http.StatusInternalServerError, "Failed to update policy", err)
+		}
 		return
 	}
 
@@ -92,7 +98,11 @@ func (pc *PolicyController) DeletePolicy(c *gin.Context) {
 	}
 
 	if err := pc.policyService.DeletePolicy(c, policyID, userID); err != nil {
-		util.RespondWithError(c, http.StatusInternalServerError, "Failed to delete policy", err)
+		if err == service.ErrPolicyNotFound {
+			util.RespondWithError(c, http.StatusNotFound, "Policy not found", err)
+		} else {
+			util.RespondWithError(c, http.StatusInternalServerError, "Failed to delete policy", err)
+		}
 		return
 	}
 
@@ -105,7 +115,11 @@ func (pc *PolicyController) GetPolicy(c *gin.Context) {
 
 	policy, err := pc.policyService.GetPolicy(c, policyID)
 	if err != nil {
-		util.RespondWithError(c, http.StatusInternalServerError, "Failed to retrieve policy", err)
+		if errors.Is(err, echo_errors.ErrPolicyNotFound) {
+			util.RespondWithError(c, http.StatusNotFound, "Policy not found", err)
+		} else {
+			util.RespondWithError(c, http.StatusInternalServerError, "Failed to retrieve policy", err)
+		}
 		return
 	}
 

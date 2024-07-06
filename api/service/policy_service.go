@@ -2,13 +2,16 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/dev-mohitbeniwal/echo/api/dao"
+	echo_errors "github.com/dev-mohitbeniwal/echo/api/errors"
 	logger "github.com/dev-mohitbeniwal/echo/api/logging"
 	"github.com/dev-mohitbeniwal/echo/api/model"
 	"github.com/dev-mohitbeniwal/echo/api/util"
@@ -22,6 +25,8 @@ type PolicyService struct {
 	notificationSvc *util.NotificationService
 	eventBus        *util.EventBus
 }
+
+var ErrPolicyNotFound = errors.New("policy not found")
 
 // NewPolicyService creates a new instance of PolicyService
 func NewPolicyService(policyDAO *dao.PolicyDAO, validationUtil *util.ValidationUtil, cacheService *util.CacheService, notificationSvc *util.NotificationService, eventBus *util.EventBus) *PolicyService {
@@ -66,9 +71,35 @@ func (s *PolicyService) handlePolicyCreated(ctx context.Context, event util.Even
 }
 
 func (s *PolicyService) handlePolicyUpdated(ctx context.Context, event util.Event) error {
-	update := event.Payload.(map[string]interface{})
-	oldPolicy := update["old"].(model.Policy)
-	newPolicy := update["new"].(model.Policy)
+	payload, ok := event.Payload.(map[string]interface{})
+	if !ok {
+		logger.Error("Invalid event payload type", zap.Any("payload", event.Payload))
+		return fmt.Errorf("invalid event payload type: %T", event.Payload)
+	}
+
+	var oldPolicy, newPolicy model.Policy
+	if old, ok := payload["old"]; ok {
+		oldPolicy, ok = old.(model.Policy)
+		if !ok {
+			logger.Error("Invalid old policy type", zap.Any("oldPolicy", old))
+			return fmt.Errorf("invalid old policy type: %T", old)
+		}
+	} else {
+		logger.Error("Old policy not found in event payload", zap.Any("payload", payload))
+		return errors.New("old policy not found in event payload")
+	}
+
+	if new, ok := payload["new"]; ok {
+		newPolicy, ok = new.(model.Policy)
+		if !ok {
+			logger.Error("Invalid new policy type", zap.Any("newPolicy", new))
+			return fmt.Errorf("invalid new policy type: %T", new)
+		}
+	} else {
+		logger.Error("New policy not found in event payload", zap.Any("payload", payload))
+		return errors.New("new policy not found in event payload")
+	}
+
 	logger.Info("Policy updated event received",
 		zap.String("policyID", newPolicy.ID),
 		zap.Int("oldVersion", oldPolicy.Version),
@@ -77,54 +108,61 @@ func (s *PolicyService) handlePolicyUpdated(ctx context.Context, event util.Even
 	// Update any indexes or materialized views
 	if err := s.updatePolicyIndexes(ctx, newPolicy); err != nil {
 		logger.Error("Failed to update policy indexes", zap.Error(err), zap.String("policyID", newPolicy.ID))
-		return err
+		// Continue execution despite the error
 	}
 
 	// Notify relevant services or systems
 	if err := s.notificationSvc.NotifyPolicyChange(ctx, "updated", newPolicy); err != nil {
 		logger.Warn("Failed to send policy update notification", zap.Error(err), zap.String("policyID", newPolicy.ID))
+		// Continue execution despite the error
 	}
 
 	// Invalidate any caches that might be affected by this policy change
 	if err := s.invalidateRelatedCaches(ctx, newPolicy.ID); err != nil {
 		logger.Error("Failed to invalidate related caches", zap.Error(err), zap.String("policyID", newPolicy.ID))
-		return err
+		// Continue execution despite the error
 	}
 
 	// Recompute access decisions that might be affected by this policy change
-	if err := s.recomputeAffectedAccessDecisions(ctx, &oldPolicy, &newPolicy); err != nil {
+	if err := s.recomputeAffectedAccessDecisions(ctx, oldPolicy, newPolicy); err != nil {
 		logger.Error("Failed to recompute affected access decisions", zap.Error(err), zap.String("policyID", newPolicy.ID))
-		return err
+		// Continue execution despite the error
 	}
 
 	return nil
 }
 
 func (s *PolicyService) handlePolicyDeleted(ctx context.Context, event util.Event) error {
-	policyID := event.Payload.(string)
+	policyID, ok := event.Payload.(string)
+	if !ok {
+		logger.Error("Invalid event payload type", zap.Any("payload", event.Payload))
+		return fmt.Errorf("invalid event payload type: %T", event.Payload)
+	}
+
 	logger.Info("Policy deleted event received", zap.String("policyID", policyID))
 
 	// Remove policy from any indexes or materialized views
 	if err := s.removePolicyFromIndexes(ctx, policyID); err != nil {
 		logger.Error("Failed to remove policy from indexes", zap.Error(err), zap.String("policyID", policyID))
-		return err
+		// Continue execution despite the error
 	}
 
 	// Notify relevant services or systems
 	if err := s.notificationSvc.NotifyPolicyChange(ctx, "deleted", model.Policy{ID: policyID}); err != nil {
 		logger.Warn("Failed to send policy deletion notification", zap.Error(err), zap.String("policyID", policyID))
+		// Continue execution despite the error
 	}
 
 	// Clean up any related data or resources
 	if err := s.cleanupPolicyRelatedData(ctx, policyID); err != nil {
 		logger.Error("Failed to clean up policy-related data", zap.Error(err), zap.String("policyID", policyID))
-		return err
+		// Continue execution despite the error
 	}
 
 	// Recompute access decisions that might be affected by this policy deletion
-	if err := s.recomputeAffectedAccessDecisions(ctx, &model.Policy{ID: policyID}, nil); err != nil {
+	if err := s.recomputeAffectedAccessDecisions(ctx, model.Policy{ID: policyID}, model.Policy{}); err != nil {
 		logger.Error("Failed to recompute affected access decisions", zap.Error(err), zap.String("policyID", policyID))
-		return err
+		// Continue execution despite the error
 	}
 
 	return nil
@@ -177,7 +215,13 @@ func (s *PolicyService) UpdatePolicy(ctx context.Context, policy model.Policy, u
 	oldPolicy, err := s.policyDAO.GetPolicy(ctx, policy.ID)
 	if err != nil {
 		logger.Error("Error retrieving existing policy", zap.Error(err), zap.String("policyID", policy.ID))
-		return nil, fmt.Errorf("failed to retrieve existing policy: %w", err)
+		return nil, err
+	}
+
+	// Check if there are any differences between the old and new policies
+	if !s.hasPolicyChanged(oldPolicy, &policy) {
+		logger.Info("No changes detected in the policy, skipping update", zap.String("policyID", policy.ID))
+		return oldPolicy, nil
 	}
 
 	policy.UpdatedAt = time.Now()
@@ -196,8 +240,8 @@ func (s *PolicyService) UpdatePolicy(ctx context.Context, policy model.Policy, u
 
 	// Publish event for asynchronous processing
 	s.eventBus.Publish(ctx, "policy.updated", map[string]interface{}{
-		"old": oldPolicy,
-		"new": updatedPolicy,
+		"old": *oldPolicy,
+		"new": *updatedPolicy,
 	})
 
 	logger.Info("Policy updated successfully", zap.String("policyID", policy.ID), zap.String("userID", userID))
@@ -228,14 +272,17 @@ func (s *PolicyService) DeletePolicy(ctx context.Context, policyID string, userI
 func (s *PolicyService) GetPolicy(ctx context.Context, policyID string) (*model.Policy, error) {
 	// Try to get from cache first
 	cachedPolicy, err := s.cacheService.GetPolicy(ctx, policyID)
-	if err == nil {
+	if err == nil && cachedPolicy != nil {
 		return cachedPolicy, nil
 	}
 
 	policy, err := s.policyDAO.GetPolicy(ctx, policyID)
 	if err != nil {
+		if errors.Is(err, echo_errors.ErrPolicyNotFound) {
+			return nil, echo_errors.ErrPolicyNotFound
+		}
 		logger.Error("Error retrieving policy", zap.Error(err), zap.String("policyID", policyID))
-		return nil, fmt.Errorf("failed to retrieve policy: %w", err)
+		return nil, echo_errors.ErrInternalServer
 	}
 
 	// Update cache
@@ -319,7 +366,21 @@ func (s *PolicyService) checkPolicyConflicts(ctx context.Context, policy model.P
 	return nil
 }
 
-// Add these methods to your PolicyService struct
+// hasPolicyChanged checks if there are any differences between the old and new policies
+func (s *PolicyService) hasPolicyChanged(oldPolicy, newPolicy *model.Policy) bool {
+	if oldPolicy.Name != newPolicy.Name ||
+		oldPolicy.Description != newPolicy.Description ||
+		oldPolicy.Effect != newPolicy.Effect ||
+		oldPolicy.Priority != newPolicy.Priority ||
+		oldPolicy.Active != newPolicy.Active ||
+		!reflect.DeepEqual(oldPolicy.Subjects, newPolicy.Subjects) ||
+		!reflect.DeepEqual(oldPolicy.Resources, newPolicy.Resources) ||
+		!reflect.DeepEqual(oldPolicy.Actions, newPolicy.Actions) ||
+		!reflect.DeepEqual(oldPolicy.Conditions, newPolicy.Conditions) {
+		return true
+	}
+	return false
+}
 
 // updatePolicyIndexes updates any search indexes or materialized views for quick policy lookups
 func (s *PolicyService) updatePolicyIndexes(ctx context.Context, policy model.Policy) error {
@@ -411,10 +472,10 @@ func (s *PolicyService) invalidateRelatedCaches(ctx context.Context, policyID st
 }
 
 // recomputeAffectedAccessDecisions re-evaluates access decisions that were based on the changed or deleted policy
-func (s *PolicyService) recomputeAffectedAccessDecisions(ctx context.Context, oldPolicy, newPolicy *model.Policy) error {
+func (s *PolicyService) recomputeAffectedAccessDecisions(ctx context.Context, oldPolicy, newPolicy model.Policy) error {
 	logger.Info("Recomputing affected access decisions",
 		zap.String("policyID", oldPolicy.ID),
-		zap.Bool("isDelete", newPolicy == nil))
+		zap.Bool("isDelete", newPolicy.ID == ""))
 
 	// This is a placeholder for actual recomputation logic
 	// In a real implementation, you might:

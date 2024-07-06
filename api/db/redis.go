@@ -107,7 +107,8 @@ func CachePolicy(ctx context.Context, policy *model.Policy) error {
 	}
 
 	key := fmt.Sprintf("policy:%s", policy.ID)
-	err = RedisClient.Set(ctx, key, base64.StdEncoding.EncodeToString(encryptedPolicy), 24*time.Hour).Err()
+	defaultTTL := viper.GetDuration("redis.defaultCacheTTL")
+	err = RedisClient.Set(ctx, key, base64.StdEncoding.EncodeToString(encryptedPolicy), defaultTTL).Err()
 	if err != nil {
 		return fmt.Errorf("failed to cache policy: %w", err)
 	}

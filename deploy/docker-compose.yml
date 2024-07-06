@@ -3,36 +3,74 @@ services:
   backend:
     build:
       context: ../api
-      dockerfile: Dockerfile
+      dockerfile: ../deploy/Dockerfile
     ports:
       - "8080:8080"
     volumes:
-      - ./api:/app
+      - ../api:/app
+      - logvolume:/var/log/echo
     depends_on:
       - neo4j
       - redis
+      - elasticsearch
     environment:
-      - NEO4J_URI=neo4j://neo4j:7474
-      - REDIS_HOST=redis
+      - NEO4J_URI=bolt://neo4j:7687
+      - REDIS_ADDR=redis:6379
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - LOG_LEVEL=info
+    networks:
+      - echo-network
 
-  frontend:
-    build:
-      context: ../client
-      dockerfile: Dockerfile.front
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./client:/app
+  # frontend:
+  #   build:
+  #     context: ../client
+  #     dockerfile: ../deploy/Dockerfile.front
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ../client:/app
+  #   networks:
+  #     - echo-network
 
   neo4j:
-    image: neo4j:latest
+    image: neo4j:4.4
     ports:
       - "7474:7474"
       - "7687:7687"
     environment:
-      NEO4J_AUTH: neo4j/test
+      NEO4J_AUTH: neo4j/secretpassword
+    volumes:
+      - neo4jdata:/data
+    networks:
+      - echo-network
 
   redis:
-    image: redis:latest
+    image: redis:6
     ports:
       - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - echo-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.14.0
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    networks:
+      - echo-network
+
+networks:
+  echo-network:
+    driver: bridge
+
+volumes:
+  neo4jdata:
+  redisdata:
+  esdata:
+  logvolume:

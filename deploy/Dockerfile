@@ -1,5 +1,5 @@
 # Use the official Golang image to create a build artifact.
-FROM golang:1.23 as builder
+FROM golang:latest as builder
 
 # Set the working directory outside $GOPATH to enable the support for modules.
 WORKDIR /app
@@ -20,6 +20,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o main .
 FROM alpine:latest  
 
 RUN apk --no-cache add ca-certificates
+
+# Create the log directory
+RUN mkdir -p /var/log/echo
 
 WORKDIR /root/
 

@@ -17,6 +17,17 @@ import (
 	"github.com/dev-mohitbeniwal/echo/api/util"
 )
 
+// IPolicyService defines the interface for policy operations
+type IPolicyService interface {
+	CreatePolicy(ctx context.Context, policy model.Policy, userID string) (*model.Policy, error)
+	UpdatePolicy(ctx context.Context, policy model.Policy, userID string) (*model.Policy, error)
+	DeletePolicy(ctx context.Context, policyID string, userID string) error
+	GetPolicy(ctx context.Context, policyID string) (*model.Policy, error)
+	ListPolicies(ctx context.Context, limit int, offset int) ([]*model.Policy, error)
+	SearchPolicies(ctx context.Context, criteria model.PolicySearchCriteria) ([]*model.Policy, error)
+	AnalyzePolicyUsage(ctx context.Context, policyID string) (*model.PolicyUsageAnalysis, error)
+}
+
 // PolicyService handles business logic for policy operations
 type PolicyService struct {
 	policyDAO       *dao.PolicyDAO
@@ -26,7 +37,7 @@ type PolicyService struct {
 	eventBus        *util.EventBus
 }
 
-var ErrPolicyNotFound = errors.New("policy not found")
+var _ IPolicyService = &PolicyService{}
 
 // NewPolicyService creates a new instance of PolicyService
 func NewPolicyService(policyDAO *dao.PolicyDAO, validationUtil *util.ValidationUtil, cacheService *util.CacheService, notificationSvc *util.NotificationService, eventBus *util.EventBus) *PolicyService {
@@ -185,7 +196,7 @@ func (s *PolicyService) CreatePolicy(ctx context.Context, policy model.Policy, u
 	policyID, err := s.policyDAO.CreatePolicy(ctx, policy, userID)
 	if err != nil {
 		logger.Error("Error creating policy", zap.Error(err), zap.String("userID", userID))
-		return nil, fmt.Errorf("failed to create policy: %w", err)
+		return nil, err
 	}
 
 	policy.ID = policyID

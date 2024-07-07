@@ -4,10 +4,11 @@ package dao
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"go.uber.org/zap"
 
@@ -17,53 +18,123 @@ import (
 	"github.com/dev-mohitbeniwal/echo/api/model"
 )
 
-// Custom error types
-var (
-	ErrPolicyNotFound    = errors.New("policy not found")
-	ErrDatabaseOperation = errors.New("database operation failed")
-)
-
 type PolicyDAO struct {
 	Driver       neo4j.Driver
 	AuditService audit.Service
 }
 
 func NewPolicyDAO(driver neo4j.Driver, auditService audit.Service) *PolicyDAO {
-	return &PolicyDAO{Driver: driver, AuditService: auditService}
+	dao := &PolicyDAO{Driver: driver, AuditService: auditService}
+	// Ensure unique constraint on Policy ID
+	ctx := context.Background()
+	if err := dao.EnsureUniqueConstraint(ctx); err != nil {
+		logger.Fatal("Failed to ensure unique constraint", zap.Error(err))
+	}
+	return dao
+}
+
+// EnsureUniqueConstraint ensures the unique constraint on the Policy ID
+func (dao *PolicyDAO) EnsureUniqueConstraint(ctx context.Context) error {
+	logger.Info("Ensuring unique constraint on Policy ID")
+	session := dao.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer func() {
+		if err := session.Close(); err != nil {
+			logger.Error("Failed to close Neo4j session", zap.Error(err))
+		}
+	}()
+
+	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
+		query := `
+        CREATE CONSTRAINT unique_policy_id IF NOT EXISTS
+        FOR (p:Policy) REQUIRE p.id IS UNIQUE
+        `
+		_, err := transaction.Run(query, nil)
+		if err != nil {
+			logger.Error("Failed to create unique constraint", zap.Error(err))
+			return nil, fmt.Errorf("failed to create unique constraint: %w", err)
+		}
+		return nil, nil
+	})
+	if err != nil {
+		logger.Error("Failed to ensure unique constraint on Policy ID", zap.Error(err))
+		return err
+	}
+
+	logger.Info("Successfully ensured unique constraint on Policy ID")
+	return nil
 }
 
 // CreatePolicy creates a new policy node in Neo4j
 func (dao *PolicyDAO) CreatePolicy(ctx context.Context, policy model.Policy, userID string) (string, error) {
 	start := time.Now()
 	logger.Info("Creating new policy", zap.String("policyName", policy.Name))
-
 	session := dao.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 
+	if policy.ID == "" {
+		policy.ID = uuid.New().String() // Generate a new UUID if ID is not provided
+	}
+
 	result, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
-		query := `
-        CREATE (p:Policy {
-            id: $id, name: $name, description: $description, effect: $effect,
-            priority: $priority, version: $version, createdAt: $createdAt, updatedAt: $updatedAt,
-            active: $active, activationDate: $activationDate, deactivationDate: $deactivationDate
-        })
+		// First, check if the policy already exists
+		checkQuery := `
+        MATCH (p:Policy {id: $id})
         RETURN p.id
         `
-		parameters := map[string]interface{}{
-			"id": policy.ID, "name": policy.Name, "description": policy.Description,
-			"effect": policy.Effect, "priority": policy.Priority, "version": policy.Version,
-			"createdAt": time.Now().Format(time.RFC3339), "updatedAt": time.Now().Format(time.RFC3339),
-			"active": policy.Active, "activationDate": formatNullableTime(policy.ActivationDate),
-			"deactivationDate": formatNullableTime(policy.DeactivationDate),
-		}
-		result, err := transaction.Run(query, parameters)
+		checkResult, err := transaction.Run(checkQuery, map[string]interface{}{"id": policy.ID})
 		if err != nil {
-			return nil, fmt.Errorf("failed to execute create query: %w", err)
+			return nil, echo_errors.ErrDatabaseOperation
 		}
-		if result.Next() {
-			return result.Record().Values[0], nil
+		if checkResult.Next() {
+			return nil, echo_errors.ErrPolicyConflict
 		}
-		return nil, errors.New("no id returned after policy creation")
+
+		// If we get here, the policy doesn't exist, so create it
+		// If we get here, the policy doesn't exist, so create it
+		createQuery := `
+            MERGE (p:Policy {id: $id})
+            ON CREATE SET p += $props
+            ON MATCH SET p += $props
+            RETURN p.id as id
+        `
+
+		// Convert subjects, resources, actions, and conditions to JSON strings
+		subjectsJSON, _ := json.Marshal(policy.Subjects)
+		resourcesJSON, _ := json.Marshal(policy.Resources)
+		actionsJSON, _ := json.Marshal(policy.Actions)
+		conditionsJSON, _ := json.Marshal(policy.Conditions)
+
+		parameters := map[string]interface{}{
+			"id": policy.ID,
+			"props": map[string]interface{}{
+				"name":             policy.Name,
+				"description":      policy.Description,
+				"effect":           policy.Effect,
+				"priority":         policy.Priority,
+				"version":          policy.Version,
+				"createdAt":        time.Now().Format(time.RFC3339),
+				"updatedAt":        time.Now().Format(time.RFC3339),
+				"active":           policy.Active,
+				"activationDate":   formatNullableTime(policy.ActivationDate),
+				"deactivationDate": formatNullableTime(policy.DeactivationDate),
+				"subjects":         string(subjectsJSON),
+				"resources":        string(resourcesJSON),
+				"actions":          string(actionsJSON),
+				"conditions":       string(conditionsJSON),
+			},
+		}
+		createResult, err := transaction.Run(createQuery, parameters)
+		if err != nil {
+			return nil, echo_errors.ErrDatabaseOperation
+		}
+		if createResult.Next() {
+			id, found := createResult.Record().Get("id")
+			if !found {
+				return nil, echo_errors.ErrInternalServer
+			}
+			return id, nil
+		}
+		return nil, echo_errors.ErrInternalServer
 	})
 
 	duration := time.Since(start)
@@ -72,15 +143,15 @@ func (dao *PolicyDAO) CreatePolicy(ctx context.Context, policy model.Policy, use
 			zap.Error(err),
 			zap.String("policyName", policy.Name),
 			zap.Duration("duration", duration))
-		return "", fmt.Errorf("failed to create policy: %w", err)
+		return "", err
 	}
 
-	policyID := result.(string)
+	policyID := fmt.Sprintf("%v", result)
 	logger.Info("Policy created successfully",
 		zap.String("policyID", policyID),
 		zap.Duration("duration", duration))
 
-	// Audit trail
+	// Audit trail (unchanged)
 	auditLog := audit.AuditLog{
 		Timestamp:     time.Now(),
 		UserID:        userID,
@@ -93,7 +164,6 @@ func (dao *PolicyDAO) CreatePolicy(ctx context.Context, policy model.Policy, use
 	if err := dao.AuditService.LogAccess(ctx, auditLog); err != nil {
 		logger.Error("Failed to create audit log", zap.Error(err))
 	}
-
 	return policyID, nil
 }
 
@@ -145,10 +215,11 @@ func (dao *PolicyDAO) UpdatePolicy(ctx context.Context, policy model.Policy, use
 		}
 		if result.Next() {
 			node := result.Record().Values[0].(neo4j.Node)
+			fmt.Println("Node: ", node.Props)
 			updatedPolicy, _ = mapNodeToPolicy(node)
 			return nil, nil
 		}
-		return nil, ErrPolicyNotFound
+		return nil, echo_errors.ErrPolicyNotFound
 	})
 
 	duration := time.Since(start)
@@ -203,7 +274,7 @@ func (dao *PolicyDAO) DeletePolicy(ctx context.Context, policyID string, userID 
 			return nil, fmt.Errorf("failed to consume delete result: %w", err)
 		}
 		if summary.Counters().NodesDeleted() == 0 {
-			return nil, ErrPolicyNotFound
+			return nil, echo_errors.ErrPolicyNotFound
 		}
 		return nil, nil
 	})
@@ -334,33 +405,56 @@ func (dao *PolicyDAO) SearchPolicies(ctx context.Context, criteria model.PolicyS
 	session := dao.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 
-	query := `
-    MATCH (p:Policy)
-    WHERE 
-        ($name = '' OR p.name CONTAINS $name)
-        AND ($effect = '' OR p.effect = $effect)
-        AND ($minPriority = -1 OR p.priority >= $minPriority)
-        AND ($maxPriority = -1 OR p.priority <= $maxPriority)
-        AND ($active IS NULL OR p.active = $active)
-        AND ($fromDate = '' OR p.createdAt >= $fromDate)
-        AND ($toDate = '' OR p.createdAt <= $toDate)
-    RETURN p
-    ORDER BY p.createdAt DESC
-    LIMIT $limit
-    `
+	var queryBuilder strings.Builder
+	queryBuilder.WriteString("MATCH (p:Policy) WHERE 1=1")
 
-	params := map[string]interface{}{
-		"name":        criteria.Name,
-		"effect":      criteria.Effect,
-		"minPriority": criteria.MinPriority,
-		"maxPriority": criteria.MaxPriority,
-		"active":      criteria.Active,
-		"fromDate":    criteria.FromDate.Format(time.RFC3339),
-		"toDate":      criteria.ToDate.Format(time.RFC3339),
-		"limit":       criteria.Limit,
+	params := make(map[string]interface{})
+
+	if criteria.Name != "" {
+		queryBuilder.WriteString(" AND p.name = $name")
+		params["name"] = criteria.Name
 	}
 
-	result, err := session.Run(query, params)
+	if criteria.Effect != "" {
+		queryBuilder.WriteString(" AND p.effect = $effect")
+		params["effect"] = criteria.Effect
+	}
+
+	if criteria.MinPriority > 0 { // Assuming MinPriority should be a positive value
+		queryBuilder.WriteString(" AND p.priority >= $minPriority")
+		params["minPriority"] = criteria.MinPriority
+	}
+
+	if criteria.MaxPriority > 0 { // Assuming MaxPriority should be a positive value
+		queryBuilder.WriteString(" AND p.priority <= $maxPriority")
+		params["maxPriority"] = criteria.MaxPriority
+	}
+
+	if criteria.Active != nil {
+		queryBuilder.WriteString(" AND p.active = $active")
+		params["active"] = *criteria.Active
+	}
+
+	if !criteria.FromDate.IsZero() {
+		queryBuilder.WriteString(" AND p.createdAt >= $fromDate")
+		params["fromDate"] = criteria.FromDate.Format(time.RFC3339)
+	}
+
+	if !criteria.ToDate.IsZero() {
+		queryBuilder.WriteString(" AND p.createdAt <= $toDate")
+		params["toDate"] = criteria.ToDate.Format(time.RFC3339)
+	}
+
+	queryBuilder.WriteString(" RETURN p ORDER BY p.createdAt DESC")
+
+	if criteria.Limit > 0 {
+		queryBuilder.WriteString(" LIMIT $limit")
+		params["limit"] = criteria.Limit
+	}
+
+	logger.Info("Executing query", zap.String("query", queryBuilder.String()), zap.Any("params", params))
+
+	result, err := session.Run(queryBuilder.String(), params)
 	if err != nil {
 		logger.Error("Failed to execute search policies query",
 			zap.Error(err),
@@ -397,18 +491,18 @@ func (dao *PolicyDAO) AnalyzePolicyUsage(ctx context.Context, policyID string) (
 	defer session.Close()
 
 	query := `
-    MATCH (p:Policy {id: $policyID})
-    OPTIONAL MATCH (p)-[:APPLIES_TO]->(r:Resource)
-    OPTIONAL MATCH (p)-[:APPLIES_TO]->(s:Subject)
-    OPTIONAL MATCH (p)-[:HAS_CONDITION]->(c:Condition)
-    RETURN 
-        p.id AS policyID,
-        p.name AS policyName,
-        COUNT(DISTINCT r) AS resourceCount,
-        COUNT(DISTINCT s) AS subjectCount,
-        COUNT(DISTINCT c) AS conditionCount,
-        p.createdAt AS createdAt,
-        p.updatedAt AS updatedAt
+		MATCH (p:Policy {id: $policyID})
+		OPTIONAL MATCH (p)-[:APPLIES_TO]->(r:Resource)
+		OPTIONAL MATCH (p)-[:APPLIES_TO]->(s:Subject)
+		OPTIONAL MATCH (p)-[:HAS_CONDITION]->(c:Condition)
+		RETURN 
+			p.id AS policyID,
+			p.name AS policyName,
+			COUNT(DISTINCT r) AS resourceCount,
+			COUNT(DISTINCT s) AS subjectCount,
+			COUNT(DISTINCT c) AS conditionCount,
+			p.createdAt AS createdAt,
+			p.updatedAt AS updatedAt
     `
 
 	result, err := session.Run(query, map[string]interface{}{"policyID": policyID})
@@ -442,7 +536,7 @@ func (dao *PolicyDAO) AnalyzePolicyUsage(ctx context.Context, policyID string) (
 	logger.Warn("Policy not found for usage analysis",
 		zap.String("policyID", policyID),
 		zap.Duration("duration", time.Since(start)))
-	return nil, ErrPolicyNotFound
+	return nil, echo_errors.ErrPolicyNotFound
 }
 
 // Helper function to create change details for audit log

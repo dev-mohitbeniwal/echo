@@ -15,10 +15,10 @@ import (
 )
 
 type PolicyController struct {
-	policyService *service.PolicyService
+	policyService service.IPolicyService
 }
 
-func NewPolicyController(policyService *service.PolicyService) *PolicyController {
+func NewPolicyController(policyService service.IPolicyService) *PolicyController {
 	return &PolicyController{
 		policyService: policyService,
 	}
@@ -42,18 +42,27 @@ func (pc *PolicyController) RegisterRoutes(r *gin.Engine) {
 func (pc *PolicyController) CreatePolicy(c *gin.Context) {
 	var policy model.Policy
 	if err := c.ShouldBindJSON(&policy); err != nil {
-		util.RespondWithError(c, http.StatusBadRequest, "Invalid policy data", err)
+		util.RespondWithError(c, http.StatusBadRequest, "Invalid policy data", echo_errors.ErrInvalidPolicyData)
 		return
 	}
 	userID, err := util.GetUserIDFromContext(c)
 	if err != nil {
-		util.RespondWithError(c, http.StatusUnauthorized, "Unauthorized", err)
+		util.RespondWithError(c, http.StatusUnauthorized, "Unauthorized", echo_errors.ErrUnauthorized)
 		return
 	}
 
 	createdPolicy, err := pc.policyService.CreatePolicy(c, policy, userID)
 	if err != nil {
-		util.RespondWithError(c, http.StatusInternalServerError, "Failed to create policy", err)
+		switch err {
+		case echo_errors.ErrPolicyConflict:
+			util.RespondWithError(c, http.StatusConflict, "Policy already exists", err)
+		case echo_errors.ErrDatabaseOperation:
+			util.RespondWithError(c, http.StatusInternalServerError, "Database operation failed", err)
+		case echo_errors.ErrInternalServer:
+			util.RespondWithError(c, http.StatusInternalServerError, "Internal server error", err)
+		default:
+			util.RespondWithError(c, http.StatusInternalServerError, "Failed to create policy", echo_errors.ErrInternalServer)
+		}
 		return
 	}
 
@@ -98,7 +107,7 @@ func (pc *PolicyController) DeletePolicy(c *gin.Context) {
 	}
 
 	if err := pc.policyService.DeletePolicy(c, policyID, userID); err != nil {
-		if err == service.ErrPolicyNotFound {
+		if err == echo_errors.ErrPolicyNotFound {
 			util.RespondWithError(c, http.StatusNotFound, "Policy not found", err)
 		} else {
 			util.RespondWithError(c, http.StatusInternalServerError, "Failed to delete policy", err)

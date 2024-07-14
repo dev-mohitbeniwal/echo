@@ -31,7 +31,7 @@ func main() {
 	}
 
 	// Initialize logger
-	logger.InitLogger()
+	logger.InitLogger(config.GetString("log.file"))
 	defer logger.Sync()
 
 	// Initialize Neo4j

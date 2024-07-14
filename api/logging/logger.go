@@ -11,7 +11,7 @@ import (
 
 var Log *zap.Logger
 
-func InitLogger() {
+func InitLogger(logDirPath string) {
 	config := zap.NewProductionConfig()
 
 	// Customize log level based on environment
@@ -23,9 +23,22 @@ func InitLogger() {
 		}
 	}
 
+	logFilePath := logDirPath + "/api.log"
+
+	// If the log file doesn't exist, create it
+	if _, err := os.Stat(logFilePath); os.IsNotExist(err) {
+		file, err := os.Create(logFilePath)
+		if err != nil {
+			panic(err)
+		}
+		file.Close()
+	}
+
+	logErrorFilePath := logDirPath + "/api_error.log"
+
 	// Customize output paths
-	config.OutputPaths = []string{"stdout", "/var/log/echo/app.log"}
-	config.ErrorOutputPaths = []string{"stderr", "/var/log/echo/error.log"}
+	config.OutputPaths = []string{"stdout", logFilePath}
+	config.ErrorOutputPaths = []string{"stderr", logErrorFilePath}
 
 	// Add caller and stack trace to log output
 	config.EncoderConfig.CallerKey = "caller"

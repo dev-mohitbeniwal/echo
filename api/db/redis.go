@@ -157,6 +157,147 @@ func DeleteCachedPolicy(ctx context.Context, policyID string) error {
 	return nil
 }
 
+func CacheOrganization(ctx context.Context, organization *model.Organization) error {
+	organizationJSON, err := json.Marshal(organization)
+	if err != nil {
+		return fmt.Errorf("failed to marshal organization: %w", err)
+	}
+
+	key := fmt.Sprintf("organization:%s", organization.ID)
+	defaultTTL := viper.GetDuration("redis.defaultCacheTTL")
+	err = RedisClient.Set(ctx, key, organizationJSON, defaultTTL).Err()
+	if err != nil {
+		return fmt.Errorf("failed to cache organization: %w", err)
+	}
+
+	logger.Debug("Organization cached successfully", zap.String("organizationID", organization.ID))
+	return nil
+}
+
+func DeleteCachedOrganization(ctx context.Context, organizationID string) error {
+	key := fmt.Sprintf("organization:%s", organizationID)
+	err := RedisClient.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete organization from cache: %w", err)
+	}
+	logger.Debug("Organization deleted from cache", zap.String("organizationID", organizationID))
+	return nil
+}
+
+func GetCachedOrganization(ctx context.Context, organizationID string) (*model.Organization, error) {
+	key := fmt.Sprintf("organization:%s", organizationID)
+	organizationJSON, err := RedisClient.Get(ctx, key).Result()
+	if err == redis.Nil {
+		logger.Debug("Organization not found in cache", zap.String("organizationID", organizationID))
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to get organization from cache: %w", err)
+	}
+
+	var organization model.Organization
+	err = json.Unmarshal([]byte(organizationJSON), &organization)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal organization: %w", err)
+	}
+
+	logger.Debug("Organization retrieved from cache", zap.String("organizationID", organizationID))
+	return &organization, nil
+}
+
+func CacheDepartment(ctx context.Context, department *model.Department) error {
+	departmentJSON, err := json.Marshal(department)
+	if err != nil {
+		return fmt.Errorf("failed to marshal department: %w", err)
+	}
+
+	key := fmt.Sprintf("department:%s", department.ID)
+	defaultTTL := viper.GetDuration("redis.defaultCacheTTL")
+	err = RedisClient.Set(ctx, key, departmentJSON, defaultTTL).Err()
+	if err != nil {
+		return fmt.Errorf("failed to cache department: %w", err)
+	}
+
+	logger.Debug("Department cached successfully", zap.String("departmentID", department.ID))
+	return nil
+}
+
+func DeleteCachedDepartment(ctx context.Context, departmentID string) error {
+	key := fmt.Sprintf("department:%s", departmentID)
+	err := RedisClient.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete department from cache: %w", err)
+	}
+	logger.Debug("Department deleted from cache", zap.String("departmentID", departmentID))
+	return nil
+}
+
+func GetCachedDepartment(ctx context.Context, departmentID string) (*model.Department, error) {
+	key := fmt.Sprintf("department:%s", departmentID)
+	departmentJSON, err := RedisClient.Get(ctx, key).Result()
+	if err == redis.Nil {
+		logger.Debug("Department not found in cache", zap.String("departmentID", departmentID))
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to get department from cache: %w", err)
+	}
+
+	var department model.Department
+	err = json.Unmarshal([]byte(departmentJSON), &department)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal department: %w", err)
+	}
+
+	logger.Debug("Department retrieved from cache", zap.String("departmentID", departmentID))
+	return &department, nil
+}
+
+func CacheUser(ctx context.Context, user *model.User) error {
+	userJSON, err := json.Marshal(user)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user: %w", err)
+	}
+
+	key := fmt.Sprintf("user:%s", user.ID)
+	defaultTTL := viper.GetDuration("redis.defaultCacheTTL")
+	err = RedisClient.Set(ctx, key, userJSON, defaultTTL).Err()
+	if err != nil {
+		return fmt.Errorf("failed to cache user: %w", err)
+	}
+
+	logger.Debug("User cached successfully", zap.String("userID", user.ID))
+	return nil
+}
+
+func DeleteCachedUser(ctx context.Context, userID string) error {
+	key := fmt.Sprintf("user:%s", userID)
+	err := RedisClient.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete user from cache: %w", err)
+	}
+	logger.Debug("User deleted from cache", zap.String("userID", userID))
+	return nil
+}
+
+func GetCachedUser(ctx context.Context, userID string) (*model.User, error) {
+	key := fmt.Sprintf("user:%s", userID)
+	userJSON, err := RedisClient.Get(ctx, key).Result()
+	if err == redis.Nil {
+		logger.Debug("User not found in cache", zap.String("userID", userID))
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to get user from cache: %w", err)
+	}
+
+	var user model.User
+	err = json.Unmarshal([]byte(userJSON), &user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal user: %w", err)
+	}
+
+	logger.Debug("User retrieved from cache", zap.String("userID", userID))
+	return &user, nil
+}
+
 func RateLimit(ctx context.Context, key string, limit int, per time.Duration) (bool, error) {
 	pipe := RedisClient.Pipeline()
 	now := time.Now().UnixNano()

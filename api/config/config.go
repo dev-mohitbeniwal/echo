@@ -51,6 +51,7 @@ func InitConfig() error {
 	viper.SetDefault("redis.addr", "localhost:6379")
 	viper.SetDefault("elasticsearch.url", "http://localhost:9200")
 	viper.SetDefault("redis.defaultCacheTTL", "10m")
+	viper.SetDefault("log.file", "logging/api.log")
 
 	// Attempt to read the config file
 	if err := viper.ReadInConfig(); err != nil {

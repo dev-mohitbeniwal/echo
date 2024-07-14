@@ -5,3 +5,8 @@ neo4j:
 redis:
   addr: "localhost:6379"
   encryptionKey: "3Rf7h9x1Kp2Lm5Nq8Tw4Yz6Bc0De3Fg1"
+log:
+  level: "debug"
+  format: "text"
+  output: "stdout"
+  file: "./logging"

@@ -24,6 +24,7 @@ type Policy struct {
 
 type Subject struct {
 	Type       string            `json:"type"` // e.g., "user", "role", "group"
+	UserID     string            `json:"user_id,omitempty"`
 	Attributes map[string]string `json:"attributes"`
 }
 
@@ -69,11 +70,6 @@ type BelongsTo struct {
 type PartOf struct {
 	ResourceID     string `json:"resource_id"`
 	OrganizationID string `json:"organization_id"`
-}
-
-type Organization struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
 }
 
 type PolicySearchCriteria struct {

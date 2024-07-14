@@ -36,3 +36,45 @@ func (v *ValidationUtil) ValidatePolicy(policy model.Policy) error {
 	// Add more validation rules as needed
 	return nil
 }
+
+func (v *ValidationUtil) ValidateOrganization(organization model.Organization) error {
+	if organization.ID == "" {
+		return fmt.Errorf("organization description cannot be empty")
+	}
+	if organization.Name == "" {
+		return fmt.Errorf("organization name cannot be empty")
+	}
+	// Add more validation rules as needed
+	return nil
+}
+
+func (v *ValidationUtil) ValidateDepartment(department model.Department) error {
+	if department.ID == "" {
+		return fmt.Errorf("department ID cannot be empty")
+	}
+	if department.Name == "" {
+		return fmt.Errorf("department name cannot be empty")
+	}
+	// Add more validation rules as needed
+	return nil
+}
+
+func (v *ValidationUtil) ValidateUser(user model.User) error {
+	if user.ID == "" {
+		return fmt.Errorf("user ID cannot be empty")
+	}
+	if user.Name == "" {
+		return fmt.Errorf("user name cannot be empty")
+	}
+	if user.Username == "" {
+		return fmt.Errorf("user username cannot be empty")
+	}
+	if user.Email == "" {
+		return fmt.Errorf("user email cannot be empty")
+	}
+	if user.UserType == "" {
+		return fmt.Errorf("user type cannot be empty")
+	}
+	// Add more validation rules as needed
+	return nil
+}

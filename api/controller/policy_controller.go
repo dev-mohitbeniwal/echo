@@ -4,7 +4,6 @@ package controller
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/dev-mohitbeniwal/echo/api/model"
 	"github.com/dev-mohitbeniwal/echo/api/service"
 	"github.com/dev-mohitbeniwal/echo/api/util"
+	helper_util "github.com/dev-mohitbeniwal/echo/api/util/helper"
 )
 
 type PolicyController struct {
@@ -137,7 +137,7 @@ func (pc *PolicyController) GetPolicy(c *gin.Context) {
 
 // ListPolicies endpoint
 func (pc *PolicyController) ListPolicies(c *gin.Context) {
-	limit, offset, err := getPaginationParams(c)
+	limit, offset, err := helper_util.GetPaginationParams(c)
 	if err != nil {
 		util.RespondWithError(c, http.StatusBadRequest, "Invalid pagination parameters", err)
 		return
@@ -180,16 +180,4 @@ func (pc *PolicyController) AnalyzePolicyUsage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, analysis)
-}
-
-func getPaginationParams(c *gin.Context) (limit int, offset int, err error) {
-	limit, err = strconv.Atoi(c.DefaultQuery("limit", "10"))
-	if err != nil {
-		return 0, 0, err
-	}
-	offset, err = strconv.Atoi(c.DefaultQuery("offset", "0"))
-	if err != nil {
-		return 0, 0, err
-	}
-	return limit, offset, nil
 }

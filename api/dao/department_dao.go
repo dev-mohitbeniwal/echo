@@ -67,36 +67,37 @@ func (dao *DepartmentDAO) CreateDepartment(ctx context.Context, department model
 
 	result, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MERGE (d:Department {id: $id})
-        ON CREATE SET d += $props
+        CREATE (d:DEPARTMENT {id: $id, name: $name, organizationID: $orgId, parentID: $parentId, createdAt: $createdAt, updatedAt: $updatedAt})
         WITH d
-        MATCH (o:Organization {id: $orgId})
-        MERGE (d)-[:BELONGS_TO]->(o)
+        MATCH (o:ORGANIZATION {id: $orgId})
+        CREATE (d)-[:BELONGS_TO]->(o)
+        WITH d, o
+        OPTIONAL MATCH (parent:DEPARTMENT {id: $parentId})
+        FOREACH (_ IN CASE WHEN parent IS NOT NULL THEN [1] ELSE [] END |
+            CREATE (d)-[:CHILD_OF]->(parent)
+        )
         RETURN d.id as id
         `
 
 		params := map[string]interface{}{
-			"id":    department.ID,
-			"orgId": department.OrganizationID,
-			"props": map[string]interface{}{
-				"name":           department.Name,
-				"organizationID": department.OrganizationID,
-				"parentID":       department.ParentID,
-				"createdAt":      time.Now().Format(time.RFC3339),
-				"updatedAt":      time.Now().Format(time.RFC3339),
-			},
+			"id":        department.ID,
+			"name":      department.Name,
+			"orgId":     department.OrganizationID,
+			"parentId":  department.ParentID,
+			"createdAt": time.Now().Format(time.RFC3339),
+			"updatedAt": time.Now().Format(time.RFC3339),
 		}
 
 		result, err := transaction.Run(query, params)
 		if err != nil {
-			return nil, echo_errors.ErrDatabaseOperation
+			return nil, fmt.Errorf("failed to execute query: %w", err)
 		}
 
 		if result.Next() {
 			return result.Record().Values[0], nil
 		}
 
-		return nil, echo_errors.ErrInternalServer
+		return nil, fmt.Errorf("no id returned")
 	})
 
 	duration := time.Since(start)
@@ -113,6 +114,15 @@ func (dao *DepartmentDAO) CreateDepartment(ctx context.Context, department model
 		zap.String("deptID", deptID),
 		zap.Duration("duration", duration))
 
+	// Verify relationship creation
+	verifyErr := dao.verifyRelationships(ctx, deptID, department.OrganizationID, department.ParentID)
+	if verifyErr != nil {
+		logger.Error("Failed to verify relationships",
+			zap.Error(verifyErr),
+			zap.String("deptID", deptID),
+			zap.String("orgID", department.OrganizationID))
+	}
+
 	// Audit trail
 	auditLog := audit.AuditLog{
 		Timestamp:     time.Now(),
@@ -127,6 +137,49 @@ func (dao *DepartmentDAO) CreateDepartment(ctx context.Context, department model
 	}
 
 	return deptID, nil
+}
+
+func (dao *DepartmentDAO) verifyRelationships(ctx context.Context, deptID, orgID, parentID string) error {
+	session := dao.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer session.Close()
+
+	query := `
+    MATCH (d:DEPARTMENT {id: $deptID})
+    OPTIONAL MATCH (d)-[r:BELONGS_TO]->(o:ORGANIZATION)
+    OPTIONAL MATCH (d)-[p:CHILD_OF]->(parent:DEPARTMENT)
+    RETURN r, p, o.id as orgId, parent.id as parentId
+    `
+
+	result, err := session.Run(query, map[string]interface{}{
+		"deptID": deptID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to verify relationships: %w", err)
+	}
+
+	if result.Next() {
+		record := result.Record()
+		orgRel, _ := record.Get("r")
+		parentRel, _ := record.Get("p")
+		returnedOrgID, _ := record.Get("orgId")
+		returnedParentID, _ := record.Get("parentId")
+
+		if orgRel == nil {
+			logger.Error("BELONGS_TO relationship not created", zap.String("deptID", deptID), zap.String("orgID", orgID))
+		} else {
+			logger.Info("BELONGS_TO relationship verified", zap.String("deptID", deptID), zap.String("orgID", returnedOrgID.(string)))
+		}
+
+		if parentID != "" && parentRel == nil {
+			logger.Error("CHILD_OF relationship not created", zap.String("deptID", deptID), zap.String("parentID", parentID))
+		} else if parentID != "" {
+			logger.Info("CHILD_OF relationship verified", zap.String("deptID", deptID), zap.String("parentID", returnedParentID.(string)))
+		}
+	} else {
+		return fmt.Errorf("no results returned when verifying relationships")
+	}
+
+	return nil
 }
 
 func (dao *DepartmentDAO) UpdateDepartment(ctx context.Context, department model.Department) (*model.Department, error) {
@@ -147,7 +200,7 @@ func (dao *DepartmentDAO) UpdateDepartment(ctx context.Context, department model
         MATCH (d:Department {id: $id})
         SET d += $props
         WITH d
-        MATCH (o:Organization {id: $orgId})
+        MATCH (o:ORGANIZATION {id: $orgId})
         MERGE (d)-[:BELONGS_TO]->(o)
         RETURN d
         `
@@ -404,7 +457,7 @@ func (dao *DepartmentDAO) GetDepartmentsByOrganization(ctx context.Context, orgI
 	session := dao.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 
-	query := `MATCH (d:Department)-[:BELONGS_TO]->(o:Organization {id: $orgId})
+	query := `MATCH (d:Department)-[:BELONGS_TO]->(o:ORGANIZATION {id: $orgId})
     RETURN d
     ORDER BY d.name
     `

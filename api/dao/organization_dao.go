@@ -40,7 +40,7 @@ func (dao *OrganizationDAO) EnsureUniqueConstraint(ctx context.Context) error {
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
         CREATE CONSTRAINT unique_org_id IF NOT EXISTS
-        FOR (o:Organization) REQUIRE o.id IS UNIQUE
+        FOR (o:ORGANIZATION) REQUIRE o.id IS UNIQUE
         `
 		_, err := transaction.Run(query, nil)
 		return nil, err
@@ -67,9 +67,8 @@ func (dao *OrganizationDAO) CreateOrganization(ctx context.Context, org model.Or
 
 	result, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MERGE (o:Organization {id: $id})
+        MERGE (o:ORGANIZATION {id: $id})
         ON CREATE SET o += $props
-        ON MATCH SET o += $props
         RETURN o.id as id
         `
 
@@ -139,7 +138,7 @@ func (dao *OrganizationDAO) UpdateOrganization(ctx context.Context, org model.Or
 
 	_, err = session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (o:Organization {id: $id})
+        MATCH (o:ORGANIZATION {id: $id})
         SET o += $props
         RETURN o
         `
@@ -207,7 +206,7 @@ func (dao *OrganizationDAO) DeleteOrganization(ctx context.Context, orgID string
 
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (o:Organization {id: $id})
+        MATCH (o:ORGANIZATION {id: $id})
         DETACH DELETE o
         `
 		result, err := transaction.Run(query, map[string]interface{}{"id": orgID})
@@ -263,7 +262,7 @@ func (dao *OrganizationDAO) GetOrganization(ctx context.Context, orgID string) (
 	defer session.Close()
 
 	query := `
-    MATCH (o:Organization {id: $id})
+    MATCH (o:ORGANIZATION {id: $id})
     RETURN o
     `
 	result, err := session.Run(query, map[string]interface{}{"id": orgID})
@@ -305,7 +304,7 @@ func (dao *OrganizationDAO) ListOrganizations(ctx context.Context, limit int, of
 	defer session.Close()
 
 	query := `
-    MATCH (o:Organization)
+    MATCH (o:ORGANIZATION)
     RETURN o
     ORDER BY o.createdAt DESC
     SKIP $offset
@@ -350,7 +349,7 @@ func (dao *OrganizationDAO) SearchOrganizations(ctx context.Context, criteria mo
 	defer session.Close()
 
 	var queryBuilder strings.Builder
-	queryBuilder.WriteString("MATCH (o:Organization) WHERE 1=1")
+	queryBuilder.WriteString("MATCH (o:ORGANIZATION) WHERE 1=1")
 
 	params := make(map[string]interface{})
 

@@ -15,6 +15,7 @@ import (
 	echo_errors "github.com/dev-mohitbeniwal/echo/api/errors"
 	logger "github.com/dev-mohitbeniwal/echo/api/logging"
 	"github.com/dev-mohitbeniwal/echo/api/model"
+	echo_neo4j "github.com/dev-mohitbeniwal/echo/api/model/neo4j"
 	helper_util "github.com/dev-mohitbeniwal/echo/api/util/helper"
 )
 
@@ -41,7 +42,7 @@ func (dao *UserDAO) EnsureUniqueConstraint(ctx context.Context) error {
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
         CREATE CONSTRAINT unique_user_id IF NOT EXISTS
-        FOR (u:User) REQUIRE u.id IS UNIQUE
+        FOR (u:USER) REQUIRE u.id IS UNIQUE
         `
 		_, err := transaction.Run(query, nil)
 		return nil, err
@@ -68,17 +69,30 @@ func (dao *UserDAO) CreateUser(ctx context.Context, user model.User) (string, er
 
 	result, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MERGE (u:User {id: $id})
-        ON CREATE SET u += $props
-        ON MATCH SET u += $props
+        CREATE (u:` + echo_neo4j.LabelUser + `{id: $id})
+        SET u += $props
+        WITH u
+        OPTIONAL MATCH (o:` + echo_neo4j.LabelOrganization + `{id: $organizationID})
+        FOREACH (_ IN CASE WHEN o IS NOT NULL THEN [1] ELSE [] END |
+            CREATE (u)-[:BELONGS_TO]->(o)
+        )
+        WITH u
+        OPTIONAL MATCH (d:` + echo_neo4j.LabelDepartment + ` {id: $departmentID})
+        FOREACH (_ IN CASE WHEN d IS NOT NULL THEN [1] ELSE [] END |
+            CREATE (u)-[:` + echo_neo4j.RelMemberOf + `]->(d)
+        )
         RETURN u.id as id
         `
 
-		attributesJSON, _ := json.Marshal(user.Attributes)
+		attributesJSON, err := json.Marshal(user.Attributes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal attributes: %w", err)
+		}
 
 		params := map[string]interface{}{
 			"id": user.ID,
 			"props": map[string]interface{}{
+				"name":           user.Name,
 				"username":       user.Username,
 				"email":          user.Email,
 				"userType":       user.UserType,
@@ -88,6 +102,8 @@ func (dao *UserDAO) CreateUser(ctx context.Context, user model.User) (string, er
 				"createdAt":      time.Now().Format(time.RFC3339),
 				"updatedAt":      time.Now().Format(time.RFC3339),
 			},
+			"organizationID": user.OrganizationID,
+			"departmentID":   user.DepartmentID,
 		}
 
 		result, err := transaction.Run(query, params)
@@ -116,10 +132,20 @@ func (dao *UserDAO) CreateUser(ctx context.Context, user model.User) (string, er
 		zap.String("userID", userID),
 		zap.Duration("duration", duration))
 
+	// Verify relationships
+	verifyErr := dao.verifyRelationships(ctx, userID, user.OrganizationID, user.DepartmentID)
+	if verifyErr != nil {
+		logger.Error("Failed to verify relationships",
+			zap.Error(verifyErr),
+			zap.String("userID", userID),
+			zap.String("orgID", user.OrganizationID),
+			zap.String("deptID", user.DepartmentID))
+	}
+
 	// Audit trail
 	auditLog := audit.AuditLog{
 		Timestamp:     time.Now(),
-		UserID:        ctx.Value("requestingUserID").(string), // Assuming you store the requesting user's ID in the context
+		UserID:        ctx.Value("requestingUserID").(string),
 		Action:        "CREATE_USER",
 		ResourceID:    userID,
 		AccessGranted: true,
@@ -130,6 +156,49 @@ func (dao *UserDAO) CreateUser(ctx context.Context, user model.User) (string, er
 	}
 
 	return userID, nil
+}
+
+func (dao *UserDAO) verifyRelationships(ctx context.Context, userID, orgID, deptID string) error {
+	session := dao.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer session.Close()
+
+	query := `
+    MATCH (u:USER {id: $userID})
+    OPTIONAL MATCH (u)-[r:BELONGS_TO]->(o:ORGANIZATION)
+    OPTIONAL MATCH (u)-[m:MEMBER_OF]->(d:DEPARTMENT)
+    RETURN r, m, o.id as orgId, d.id as deptId
+    `
+
+	result, err := session.Run(query, map[string]interface{}{
+		"userID": userID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to verify relationships: %w", err)
+	}
+
+	if result.Next() {
+		record := result.Record()
+		orgRel, _ := record.Get("r")
+		deptRel, _ := record.Get("m")
+		returnedOrgID, _ := record.Get("orgId")
+		returnedDeptID, _ := record.Get("deptId")
+
+		if orgID != "" && orgRel == nil {
+			logger.Error("BELONGS_TO relationship not created", zap.String("userID", userID), zap.String("orgID", orgID))
+		} else if orgID != "" {
+			logger.Info("BELONGS_TO relationship verified", zap.String("userID", userID), zap.String("orgID", returnedOrgID.(string)))
+		}
+
+		if deptID != "" && deptRel == nil {
+			logger.Error("MEMBER_OF relationship not created", zap.String("userID", userID), zap.String("deptID", deptID))
+		} else if deptID != "" {
+			logger.Info("MEMBER_OF relationship verified", zap.String("userID", userID), zap.String("deptID", returnedDeptID.(string)))
+		}
+	} else {
+		return fmt.Errorf("no results returned when verifying relationships")
+	}
+
+	return nil
 }
 
 func (dao *UserDAO) UpdateUser(ctx context.Context, user model.User) (*model.User, error) {
@@ -147,7 +216,7 @@ func (dao *UserDAO) UpdateUser(ctx context.Context, user model.User) (*model.Use
 
 	_, err = session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (u:User {id: $id})
+        MATCH (u:USER {id: $id})
         SET u += $props
         RETURN u
         `
@@ -222,7 +291,7 @@ func (dao *UserDAO) DeleteUser(ctx context.Context, userID string) error {
 
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (u:User {id: $id})
+        MATCH (u:USER {id: $id})
         DETACH DELETE u
         `
 		result, err := transaction.Run(query, map[string]interface{}{"id": userID})
@@ -278,7 +347,7 @@ func (dao *UserDAO) GetUser(ctx context.Context, userID string) (*model.User, er
 	defer session.Close()
 
 	query := `
-    MATCH (u:User {id: $id})
+    MATCH (u:USER {id: $id})
     RETURN u
     `
 	result, err := session.Run(query, map[string]interface{}{"id": userID})
@@ -320,7 +389,7 @@ func (dao *UserDAO) ListUsers(ctx context.Context, limit int, offset int) ([]*mo
 	defer session.Close()
 
 	query := `
-    MATCH (u:User)
+    MATCH (u:USER)
     RETURN u
     ORDER BY u.createdAt DESC
     SKIP $offset

@@ -1,3 +1,4 @@
+// api/model/policy.go
 package model
 
 import (
@@ -5,21 +6,22 @@ import (
 )
 
 type Policy struct {
-	ID               string      `json:"id"`
-	Name             string      `json:"name"`
-	Description      string      `json:"description"`
-	Effect           string      `json:"effect"` // "allow" or "deny"
-	Subjects         []Subject   `json:"subjects"`
-	Resources        []Resource  `json:"resources"`
-	Actions          []string    `json:"actions"`
-	Conditions       []Condition `json:"conditions"`
-	Priority         int         `json:"priority"`
-	Version          int         `json:"version"`
-	CreatedAt        time.Time   `json:"created_at"`
-	UpdatedAt        time.Time   `json:"updated_at"`
-	Active           bool        `json:"active"`
-	ActivationDate   *time.Time  `json:"activation_date,omitempty"`
-	DeactivationDate *time.Time  `json:"deactivation_date,omitempty"`
+	ID                string      `json:"id"`
+	Name              string      `json:"name"`
+	Description       string      `json:"description"`
+	Effect            string      `json:"effect"` // "allow" or "deny"
+	Subjects          []Subject   `json:"subjects"`
+	Resources         []Resource  `json:"resources"`
+	Actions           []string    `json:"actions"`
+	Conditions        []Condition `json:"conditions"`
+	DynamicAttributes []string    `json:"dynamic_attributes,omitempty"`
+	Priority          int         `json:"priority"`
+	Version           int         `json:"version"`
+	CreatedAt         time.Time   `json:"created_at"`
+	UpdatedAt         time.Time   `json:"updated_at"`
+	Active            bool        `json:"active"`
+	ActivationDate    *time.Time  `json:"activation_date,omitempty"`
+	DeactivationDate  *time.Time  `json:"deactivation_date,omitempty"`
 }
 
 type Subject struct {
@@ -35,9 +37,10 @@ type Resource struct {
 
 type Condition struct {
 	Attribute     string        `json:"attribute"`
-	Operator      string        `json:"operator"` // e.g., "equals", "contains", "greater_than"
+	Operator      string        `json:"operator"`
 	Value         interface{}   `json:"value"`
 	SubConditions *ConditionSet `json:"sub_conditions,omitempty"`
+	IsDynamic     bool          `json:"is_dynamic"` // Add this field
 }
 
 type ConditionSet struct {

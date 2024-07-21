@@ -40,7 +40,7 @@ func (dao *DepartmentDAO) EnsureUniqueConstraint(ctx context.Context) error {
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
         CREATE CONSTRAINT unique_dept_id IF NOT EXISTS
-        FOR (d:Department) REQUIRE d.id IS UNIQUE
+        FOR (d:DEPARTMENT) REQUIRE d.id IS UNIQUE
         `
 		_, err := transaction.Run(query, nil)
 		return nil, err
@@ -197,7 +197,7 @@ func (dao *DepartmentDAO) UpdateDepartment(ctx context.Context, department model
 
 	_, err = session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (d:Department {id: $id})
+        MATCH (d:DEPARTMENT {id: $id})
         SET d += $props
         WITH d
         MATCH (o:ORGANIZATION {id: $orgId})
@@ -271,7 +271,7 @@ func (dao *DepartmentDAO) DeleteDepartment(ctx context.Context, departmentID str
 
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (d:Department {id: $id})
+        MATCH (d:DEPARTMENT {id: $id})
         DETACH DELETE d
         `
 		result, err := transaction.Run(query, map[string]interface{}{"id": departmentID})
@@ -327,7 +327,7 @@ func (dao *DepartmentDAO) GetDepartment(ctx context.Context, departmentID string
 	defer session.Close()
 
 	query := `
-    MATCH (d:Department {id: $id})
+    MATCH (d:DEPARTMENT {id: $id})
     RETURN d
     `
 	result, err := session.Run(query, map[string]interface{}{"id": departmentID})
@@ -369,7 +369,7 @@ func (dao *DepartmentDAO) ListDepartments(ctx context.Context, limit int, offset
 	defer session.Close()
 
 	query := `
-    MATCH (d:Department)
+    MATCH (d:DEPARTMENT)
     RETURN d
     ORDER BY d.createdAt DESC
     SKIP $offset
@@ -457,7 +457,7 @@ func (dao *DepartmentDAO) GetDepartmentsByOrganization(ctx context.Context, orgI
 	session := dao.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 
-	query := `MATCH (d:Department)-[:BELONGS_TO]->(o:ORGANIZATION {id: $orgId})
+	query := `MATCH (d:DEPARTMENT)-[:BELONGS_TO]->(o:ORGANIZATION {id: $orgId})
     RETURN d
     ORDER BY d.name
     `
@@ -500,8 +500,8 @@ func (dao *DepartmentDAO) GetDepartmentHierarchy(ctx context.Context, deptID str
 	defer session.Close()
 
 	query := `
-    MATCH (d:Department {id: $deptId})
-    MATCH (d)-[:BELONGS_TO*0..]->(parent:Department)
+    MATCH (d:DEPARTMENT {id: $deptId})
+    MATCH (d)-[:BELONGS_TO*0..]->(parent:DEPARTMENT)
     RETURN parent
     ORDER BY length(((d)-[:BELONGS_TO*]->(parent))) DESC
     `
@@ -544,7 +544,7 @@ func (dao *DepartmentDAO) GetChildDepartments(ctx context.Context, parentDeptID 
 	defer session.Close()
 
 	query := `
-    MATCH (parent:Department {id: $parentId})<-[:BELONGS_TO]-(child:Department)
+    MATCH (parent:DEPARTMENT {id: $parentId})<-[:BELONGS_TO]-(child:DEPARTMENT)
     RETURN child
     ORDER BY child.name
     `
@@ -588,9 +588,9 @@ func (dao *DepartmentDAO) MoveDepartment(ctx context.Context, deptID string, new
 
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (d:Department {id: $deptId})
-        MATCH (newParent:Department {id: $newParentId})
-        OPTIONAL MATCH (d)-[r:BELONGS_TO]->(:Department)
+        MATCH (d:DEPARTMENT {id: $deptId})
+        MATCH (newParent:DEPARTMENT {id: $newParentId})
+        OPTIONAL MATCH (d)-[r:BELONGS_TO]->(:DEPARTMENT)
         DELETE r
         MERGE (d)-[:BELONGS_TO]->(newParent)
         SET d.parentID = $newParentId, d.updatedAt = $updatedAt
@@ -654,7 +654,7 @@ func (dao *DepartmentDAO) SearchDepartments(ctx context.Context, criteria model.
 	defer session.Close()
 
 	var queryBuilder strings.Builder
-	queryBuilder.WriteString("MATCH (d:Department) WHERE 1=1")
+	queryBuilder.WriteString("MATCH (d:DEPARTMENT) WHERE 1=1")
 
 	params := make(map[string]interface{})
 

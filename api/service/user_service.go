@@ -141,7 +141,7 @@ func (s *UserService) CreateUser(ctx context.Context, user model.User, creatorID
 			// Department with this ID already exists
 			return nil, echo_errors.ErrUserConflict
 		}
-		if err != echo_errors.ErrDepartmentNotFound {
+		if err != echo_errors.ErrUserNotFound {
 			// An error occurred while checking for existing department
 			return nil, echo_errors.ErrDatabaseOperation
 		}

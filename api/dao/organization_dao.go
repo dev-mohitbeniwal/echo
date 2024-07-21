@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -341,26 +342,64 @@ func (dao *OrganizationDAO) ListOrganizations(ctx context.Context, limit int, of
 	return orgs, nil
 }
 
-func (dao *OrganizationDAO) SearchOrganizations(ctx context.Context, query string, limit int, offset int) ([]*model.Organization, error) {
+func (dao *OrganizationDAO) SearchOrganizations(ctx context.Context, criteria model.OrganizationSearchCriteria) ([]*model.Organization, error) {
 	start := time.Now()
-	logger.Info("Searching organizations", zap.String("query", query), zap.Int("limit", limit), zap.Int("offset", offset))
+	logger.Info("Searching organizations", zap.Any("criteria", criteria))
 
 	session := dao.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 
-	query = `
-	MATCH (o:Organization)
-	WHERE toLower(o.name) CONTAINS toLower($query)
-	RETURN o
-	ORDER BY o.createdAt DESC
-	SKIP $offset
-	LIMIT $limit
-	`
-	result, err := session.Run(query, map[string]interface{}{
-		"query":  query,
-		"limit":  limit,
-		"offset": offset,
-	})
+	var queryBuilder strings.Builder
+	queryBuilder.WriteString("MATCH (o:Organization) WHERE 1=1")
+
+	params := make(map[string]interface{})
+
+	if criteria.Name != "" {
+		queryBuilder.WriteString(" AND toLower(o.name) CONTAINS toLower($name)")
+		params["name"] = criteria.Name
+	}
+
+	if criteria.ID != "" {
+		queryBuilder.WriteString(" AND o.id = $id")
+		params["id"] = criteria.ID
+	}
+
+	if criteria.FromDate != nil {
+		queryBuilder.WriteString(" AND o.createdAt >= $fromDate")
+		params["fromDate"] = criteria.FromDate.Format(time.RFC3339)
+	}
+
+	if criteria.ToDate != nil {
+		queryBuilder.WriteString(" AND o.createdAt <= $toDate")
+		params["toDate"] = criteria.ToDate.Format(time.RFC3339)
+	}
+
+	queryBuilder.WriteString(" RETURN o")
+
+	if criteria.SortBy != "" {
+		queryBuilder.WriteString(fmt.Sprintf(" ORDER BY o.%s", criteria.SortBy))
+		if criteria.SortOrder != "" {
+			queryBuilder.WriteString(" " + strings.ToUpper(criteria.SortOrder))
+		} else {
+			queryBuilder.WriteString(" ASC")
+		}
+	} else {
+		queryBuilder.WriteString(" ORDER BY o.createdAt DESC")
+	}
+
+	if criteria.Offset > 0 {
+		queryBuilder.WriteString(" SKIP $offset")
+		params["offset"] = criteria.Offset
+	}
+
+	if criteria.Limit > 0 {
+		queryBuilder.WriteString(" LIMIT $limit")
+		params["limit"] = criteria.Limit
+	}
+
+	logger.Info("Executing query", zap.String("query", queryBuilder.String()), zap.Any("params", params))
+
+	result, err := session.Run(queryBuilder.String(), params)
 	if err != nil {
 		logger.Error("Failed to execute search organizations query",
 			zap.Error(err),

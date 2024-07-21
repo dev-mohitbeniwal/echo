@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -592,28 +593,77 @@ func (dao *DepartmentDAO) MoveDepartment(ctx context.Context, deptID string, new
 }
 
 // SearchDepartments searches for departments based on a name pattern
-func (dao *DepartmentDAO) SearchDepartments(ctx context.Context, namePattern string, limit int) ([]*model.Department, error) {
+func (dao *DepartmentDAO) SearchDepartments(ctx context.Context, criteria model.DepartmentSearchCriteria) ([]*model.Department, error) {
 	start := time.Now()
-	logger.Info("Searching departments", zap.String("namePattern", namePattern), zap.Int("limit", limit))
+	logger.Info("Searching departments", zap.Any("criteria", criteria))
 
 	session := dao.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 
-	query := `
-    MATCH (d:Department)
-    WHERE d.name =~ $namePattern
-    RETURN d
-    ORDER BY d.name
-    LIMIT $limit
-    `
-	result, err := session.Run(query, map[string]interface{}{
-		"namePattern": "(?i).*" + namePattern + ".*",
-		"limit":       limit,
-	})
+	var queryBuilder strings.Builder
+	queryBuilder.WriteString("MATCH (d:Department) WHERE 1=1")
+
+	params := make(map[string]interface{})
+
+	if criteria.ID != "" {
+		queryBuilder.WriteString(" AND d.id = $id")
+		params["id"] = criteria.ID
+	}
+
+	if criteria.Name != "" {
+		queryBuilder.WriteString(" AND toLower(d.name) CONTAINS toLower($name)")
+		params["name"] = criteria.Name
+	}
+
+	if criteria.OrganizationID != "" {
+		queryBuilder.WriteString(" AND d.organizationID = $orgID")
+		params["orgID"] = criteria.OrganizationID
+	}
+
+	if criteria.ParentID != "" {
+		queryBuilder.WriteString(" AND d.parentID = $parentID")
+		params["parentID"] = criteria.ParentID
+	}
+
+	if criteria.FromDate != nil {
+		queryBuilder.WriteString(" AND d.createdAt >= $fromDate")
+		params["fromDate"] = criteria.FromDate.Format(time.RFC3339)
+	}
+
+	if criteria.ToDate != nil {
+		queryBuilder.WriteString(" AND d.createdAt <= $toDate")
+		params["toDate"] = criteria.ToDate.Format(time.RFC3339)
+	}
+
+	queryBuilder.WriteString(" RETURN d")
+
+	if criteria.SortBy != "" {
+		queryBuilder.WriteString(fmt.Sprintf(" ORDER BY d.%s", criteria.SortBy))
+		if criteria.SortOrder != "" {
+			queryBuilder.WriteString(" " + strings.ToUpper(criteria.SortOrder))
+		} else {
+			queryBuilder.WriteString(" ASC")
+		}
+	} else {
+		queryBuilder.WriteString(" ORDER BY d.name ASC")
+	}
+
+	if criteria.Offset > 0 {
+		queryBuilder.WriteString(" SKIP $offset")
+		params["offset"] = criteria.Offset
+	}
+
+	if criteria.Limit > 0 {
+		queryBuilder.WriteString(" LIMIT $limit")
+		params["limit"] = criteria.Limit
+	}
+
+	logger.Info("Executing query", zap.String("query", queryBuilder.String()), zap.Any("params", params))
+
+	result, err := session.Run(queryBuilder.String(), params)
 	if err != nil {
 		logger.Error("Failed to execute search departments query",
 			zap.Error(err),
-			zap.String("namePattern", namePattern),
 			zap.Duration("duration", time.Since(start)))
 		return nil, echo_errors.ErrDatabaseOperation
 	}
@@ -632,7 +682,6 @@ func (dao *DepartmentDAO) SearchDepartments(ctx context.Context, namePattern str
 	}
 
 	logger.Info("Departments searched successfully",
-		zap.String("namePattern", namePattern),
 		zap.Int("resultCount", len(departments)),
 		zap.Duration("duration", time.Since(start)))
 

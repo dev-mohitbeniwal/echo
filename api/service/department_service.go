@@ -27,7 +27,7 @@ type IDepartmentService interface {
 	GetDepartmentHierarchy(ctx context.Context, deptID string) ([]*model.Department, error)
 	GetChildDepartments(ctx context.Context, parentDeptID string) ([]*model.Department, error)
 	MoveDepartment(ctx context.Context, deptID string, newParentID string, userID string) error
-	SearchDepartments(ctx context.Context, namePattern string, limit int) ([]*model.Department, error)
+	SearchDepartments(ctx context.Context, criteria model.DepartmentSearchCriteria) ([]*model.Department, error)
 }
 
 // DepartmentService handles business logic for department operations
@@ -136,6 +136,19 @@ func (s *DepartmentService) handleDepartmentDeleted(ctx context.Context, event u
 func (s *DepartmentService) CreateDepartment(ctx context.Context, dept model.Department, userID string) (*model.Department, error) {
 	if err := s.validationUtil.ValidateDepartment(dept); err != nil {
 		return nil, fmt.Errorf("invalid department: %w", err)
+	}
+
+	// Check if department with the same ID already exists
+	if dept.ID != "" {
+		_, err := s.deptDAO.GetDepartment(ctx, dept.ID)
+		if err == nil {
+			// Department with this ID already exists
+			return nil, echo_errors.ErrDepartmentConflict
+		}
+		if err != echo_errors.ErrDepartmentNotFound {
+			// An error occurred while checking for existing department
+			return nil, echo_errors.ErrDatabaseOperation
+		}
 	}
 
 	dept.CreatedAt = time.Now()
@@ -306,10 +319,10 @@ func (s *DepartmentService) MoveDepartment(ctx context.Context, deptID string, n
 }
 
 // SearchDepartments searches for departments based on a name pattern
-func (s *DepartmentService) SearchDepartments(ctx context.Context, namePattern string, limit int) ([]*model.Department, error) {
-	depts, err := s.deptDAO.SearchDepartments(ctx, namePattern, limit)
+func (s *DepartmentService) SearchDepartments(ctx context.Context, criteria model.DepartmentSearchCriteria) ([]*model.Department, error) {
+	depts, err := s.deptDAO.SearchDepartments(ctx, criteria)
 	if err != nil {
-		logger.Error("Error searching departments", zap.Error(err), zap.String("namePattern", namePattern), zap.Int("limit", limit))
+		logger.Error("Error searching departments", zap.Error(err), zap.Any("criteria", criteria))
 		return nil, fmt.Errorf("failed to search departments: %w", err)
 	}
 
@@ -317,7 +330,6 @@ func (s *DepartmentService) SearchDepartments(ctx context.Context, namePattern s
 }
 
 // Helper methods
-
 func (s *DepartmentService) updateDepartmentIndexes(ctx context.Context, dept model.Department) error {
 	// Implementation for updating indexes
 	// This could involve updating search indexes or other data structures for efficient querying

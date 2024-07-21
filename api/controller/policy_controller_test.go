@@ -35,7 +35,8 @@ func TestPolicyController(t *testing.T) {
 	mockPolicyService := mock_service.NewMockIPolicyService(ctrl)
 	policyController := controller.NewPolicyController(mockPolicyService)
 	router := setupRouter()
-	policyController.RegisterRoutes(router)
+	api := router.Group("/")
+	policyController.RegisterRoutes(api)
 
 	t.Run("CreatePolicy_Success", func(t *testing.T) {
 		mockPolicyService.EXPECT().

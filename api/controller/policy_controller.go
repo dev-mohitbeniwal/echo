@@ -25,7 +25,7 @@ func NewPolicyController(policyService service.IPolicyService) *PolicyController
 }
 
 // RegisterRoutes registers the API routes
-func (pc *PolicyController) RegisterRoutes(r *gin.Engine) {
+func (pc *PolicyController) RegisterRoutes(r *gin.RouterGroup) {
 	policies := r.Group("/policies")
 	{
 		policies.POST("", pc.CreatePolicy)

@@ -134,6 +134,19 @@ func (s *UserService) CreateUser(ctx context.Context, user model.User, creatorID
 		return nil, fmt.Errorf("invalid user: %w", err)
 	}
 
+	// Check if user with the same ID already exists
+	if user.ID != "" {
+		_, err := s.userDAO.GetUser(ctx, user.ID)
+		if err == nil {
+			// Department with this ID already exists
+			return nil, echo_errors.ErrUserConflict
+		}
+		if err != echo_errors.ErrDepartmentNotFound {
+			// An error occurred while checking for existing department
+			return nil, echo_errors.ErrDatabaseOperation
+		}
+	}
+
 	user.CreatedAt = time.Now()
 	user.UpdatedAt = time.Now()
 

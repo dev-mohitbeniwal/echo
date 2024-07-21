@@ -3,6 +3,7 @@ package config
 
 import (
 	"log"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -94,4 +95,8 @@ func GetBool(key string) bool {
 // GetFloat64 retrieves a float64 value from the configuration
 func GetFloat64(key string) float64 {
 	return viper.GetFloat64(key)
+}
+
+func GetDuration(key string) time.Duration {
+	return viper.GetDuration(key)
 }

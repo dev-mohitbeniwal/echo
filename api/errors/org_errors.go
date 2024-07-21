@@ -6,7 +6,7 @@ import "errors"
 var (
 	ErrOrganizationNotFound    = errors.New("organization not found")
 	ErrDepartmentNotFound      = errors.New("department not found")
-	ErrOrganizationConflict    = errors.New("organization conflict")
+	ErrOrganizationConflict    = errors.New("organization conflict already exists")
 	ErrInvalidOrganizationData = errors.New("invalid organization data")
 	ErrDepartmentConflict      = errors.New("department conflict")
 	ErrInvalidDepartmentData   = errors.New("invalid department data")

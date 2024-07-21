@@ -10,3 +10,9 @@ log:
   format: "text"
   output: "stdout"
   file: "./logging"
+rate_limit:
+  requests: 10
+auth:
+  cognito:
+    user_pool_id: "ap-south-1_R3kToysyE"
+    aws_region: "ap-south-1"

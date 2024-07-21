@@ -25,7 +25,7 @@ func NewUserController(userService service.IUserService) *UserController {
 }
 
 // RegisterRoutes registers the API routes
-func (uc *UserController) RegisterRoutes(r *gin.Engine) {
+func (uc *UserController) RegisterRoutes(r *gin.RouterGroup) {
 	users := r.Group("/users")
 	{
 		users.POST("", uc.CreateUser)

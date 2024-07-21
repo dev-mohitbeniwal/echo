@@ -23,7 +23,7 @@ type IOrganizationService interface {
 	DeleteOrganization(ctx context.Context, orgID string, userID string) error
 	GetOrganization(ctx context.Context, orgID string) (*model.Organization, error)
 	ListOrganizations(ctx context.Context, limit int, offset int) ([]*model.Organization, error)
-	SearchOrganizations(ctx context.Context, name string, limit, offset int) ([]*model.Organization, error)
+	SearchOrganizations(ctx context.Context, criteria model.OrganizationSearchCriteria) ([]*model.Organization, error)
 }
 
 // OrganizationService handles business logic for organization operations
@@ -132,6 +132,19 @@ func (s *OrganizationService) handleOrganizationDeleted(ctx context.Context, eve
 func (s *OrganizationService) CreateOrganization(ctx context.Context, org model.Organization, userID string) (*model.Organization, error) {
 	if err := s.validationUtil.ValidateOrganization(org); err != nil {
 		return nil, fmt.Errorf("invalid organization: %w", err)
+	}
+
+	// Check if organization with the same ID already exists
+	if org.ID != "" {
+		_, err := s.orgDAO.GetOrganization(ctx, org.ID)
+		if err == nil {
+			// Organization with this ID already exists
+			return nil, echo_errors.ErrOrganizationConflict
+		}
+		if err != echo_errors.ErrOrganizationNotFound {
+			// An error occurred while checking for existing organization
+			return nil, echo_errors.ErrDatabaseOperation
+		}
 	}
 
 	org.CreatedAt = time.Now()
@@ -249,10 +262,10 @@ func (s *OrganizationService) ListOrganizations(ctx context.Context, limit int, 
 }
 
 // SearchOrganizations searches for organizations based on a name pattern
-func (s *OrganizationService) SearchOrganizations(ctx context.Context, name string, limit, offset int) ([]*model.Organization, error) {
-	orgs, err := s.orgDAO.SearchOrganizations(ctx, name, limit, offset)
+func (s *OrganizationService) SearchOrganizations(ctx context.Context, criteria model.OrganizationSearchCriteria) ([]*model.Organization, error) {
+	orgs, err := s.orgDAO.SearchOrganizations(ctx, criteria)
 	if err != nil {
-		logger.Error("Error searching organizations", zap.Error(err), zap.String("name", name))
+		logger.Error("Error searching organizations", zap.Error(err), zap.Any("criteria", criteria))
 		return nil, fmt.Errorf("failed to search organizations: %w", err)
 	}
 
@@ -260,7 +273,6 @@ func (s *OrganizationService) SearchOrganizations(ctx context.Context, name stri
 }
 
 // Helper methods
-
 func (s *OrganizationService) updateOrganizationIndexes(ctx context.Context, org model.Organization) error {
 	// Implementation for updating indexes
 	return nil

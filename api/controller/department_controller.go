@@ -25,7 +25,7 @@ func NewDepartmentController(departmentService service.IDepartmentService) *Depa
 }
 
 // RegisterRoutes registers the API routes
-func (dc *DepartmentController) RegisterRoutes(r *gin.Engine) {
+func (dc *DepartmentController) RegisterRoutes(r *gin.RouterGroup) {
 	departments := r.Group("/departments")
 	{
 		departments.POST("", dc.CreateDepartment)
@@ -157,21 +157,16 @@ func (dc *DepartmentController) ListDepartments(c *gin.Context) {
 
 // SearchDepartments endpoint
 func (dc *DepartmentController) SearchDepartments(c *gin.Context) {
-	namePattern := c.Query("name")
-	limit, _, err := helper_util.GetPaginationParams(c)
-	if err != nil {
-		util.RespondWithError(c, http.StatusBadRequest, "Invalid pagination parameters", err)
+	var criteria model.DepartmentSearchCriteria
+
+	if err := c.ShouldBindJSON(&criteria); err != nil {
+		util.RespondWithError(c, http.StatusBadRequest, "Invalid search criteria", err)
 		return
 	}
 
-	if namePattern == "" {
-		util.RespondWithError(c, http.StatusBadRequest, "Name pattern is required", nil)
-		return
-	}
-
-	depts, err := dc.departmentService.SearchDepartments(c, namePattern, limit)
+	depts, err := dc.departmentService.SearchDepartments(c, criteria)
 	if err != nil {
-		util.RespondWithError(c, http.StatusInternalServerError, "Failed to search departments", err)
+		util.RespondWithError(c, http.StatusInternalServerError, "Failed to search organizations", err)
 		return
 	}
 

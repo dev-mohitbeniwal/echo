@@ -25,7 +25,7 @@ func NewOrganizationController(organizationService service.IOrganizationService)
 }
 
 // RegisterRoutes registers the API routes
-func (oc *OrganizationController) RegisterRoutes(r *gin.Engine) {
+func (oc *OrganizationController) RegisterRoutes(r *gin.RouterGroup) {
 	organizations := r.Group("/organizations")
 	{
 		organizations.POST("", oc.CreateOrganization)
@@ -152,21 +152,15 @@ func (oc *OrganizationController) ListOrganizations(c *gin.Context) {
 }
 
 // SearchOrganizations endpoint
+// SearchOrganizations endpoint
 func (oc *OrganizationController) SearchOrganizations(c *gin.Context) {
-	name := c.Query("name")
-
-	limit, offset, err := helper_util.GetPaginationParams(c)
-	if err != nil {
-		util.RespondWithError(c, http.StatusBadRequest, "Invalid pagination parameters", err)
+	var criteria model.OrganizationSearchCriteria
+	if err := c.ShouldBindJSON(&criteria); err != nil {
+		util.RespondWithError(c, http.StatusBadRequest, "Invalid search criteria", err)
 		return
 	}
 
-	if name == "" {
-		util.RespondWithError(c, http.StatusBadRequest, "Name parameter is required", nil)
-		return
-	}
-
-	orgs, err := oc.organizationService.SearchOrganizations(c, name, limit, offset)
+	orgs, err := oc.organizationService.SearchOrganizations(c, criteria)
 	if err != nil {
 		util.RespondWithError(c, http.StatusInternalServerError, "Failed to search organizations", err)
 		return

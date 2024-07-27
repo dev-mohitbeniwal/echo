@@ -78,3 +78,43 @@ func (v *ValidationUtil) ValidateUser(user model.User) error {
 	// Add more validation rules as needed
 	return nil
 }
+
+func (v *ValidationUtil) ValidateRole(role model.Role) error {
+	if role.ID == "" {
+		return fmt.Errorf("role ID cannot be empty")
+	}
+	if role.Name == "" {
+		return fmt.Errorf("role name cannot be empty")
+	}
+	if role.OrganizationID == "" {
+		return fmt.Errorf("role organization ID cannot be empty")
+	}
+	// Add more validation rules as needed
+	return nil
+}
+
+func (v *ValidationUtil) ValidateGroup(group model.Group) error {
+	if group.ID == "" {
+		return fmt.Errorf("group ID cannot be empty")
+	}
+	if group.Name == "" {
+		return fmt.Errorf("group name cannot be empty")
+	}
+	if group.OrganizationID == "" {
+		return fmt.Errorf("group organization ID cannot be empty")
+	}
+	// Add more validation rules as needed
+	return nil
+}
+
+// ValidatePermission
+func (v *ValidationUtil) ValidatePermission(permission model.Permission) error {
+	if permission.ID == "" {
+		return fmt.Errorf("permission ID cannot be empty")
+	}
+	if permission.Name == "" {
+		return fmt.Errorf("permission name cannot be empty")
+	}
+	// Add more validation rules as needed
+	return nil
+}

@@ -1,7 +1,7 @@
 neo4j:
   uri: "bolt://localhost:7687"
   username: "neo4j"
-  password: "secretpassword" # Make sure this matches the password defined in your docker-compose.yml
+  password: "Iamhappy@77" # Make sure this matches the password defined in your docker-compose.yml
 redis:
   addr: "localhost:6379"
   encryptionKey: "3Rf7h9x1Kp2Lm5Nq8Tw4Yz6Bc0De3Fg1"

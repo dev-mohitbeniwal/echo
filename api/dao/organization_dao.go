@@ -15,6 +15,7 @@ import (
 	echo_errors "github.com/dev-mohitbeniwal/echo/api/errors"
 	logger "github.com/dev-mohitbeniwal/echo/api/logging"
 	"github.com/dev-mohitbeniwal/echo/api/model"
+	echo_neo4j "github.com/dev-mohitbeniwal/echo/api/model/neo4j"
 	helper_util "github.com/dev-mohitbeniwal/echo/api/util/helper"
 )
 
@@ -40,7 +41,7 @@ func (dao *OrganizationDAO) EnsureUniqueConstraint(ctx context.Context) error {
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
         CREATE CONSTRAINT unique_org_id IF NOT EXISTS
-        FOR (o:ORGANIZATION) REQUIRE o.id IS UNIQUE
+        FOR (o:` + echo_neo4j.LabelOrganization + `) REQUIRE o.id IS UNIQUE
         `
 		_, err := transaction.Run(query, nil)
 		return nil, err
@@ -67,7 +68,7 @@ func (dao *OrganizationDAO) CreateOrganization(ctx context.Context, org model.Or
 
 	result, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MERGE (o:ORGANIZATION {id: $id})
+        MERGE (o:` + echo_neo4j.LabelOrganization + ` {id: $id})
         ON CREATE SET o += $props
         RETURN o.id as id
         `
@@ -138,7 +139,7 @@ func (dao *OrganizationDAO) UpdateOrganization(ctx context.Context, org model.Or
 
 	_, err = session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (o:ORGANIZATION {id: $id})
+        MATCH (o:` + echo_neo4j.LabelOrganization + ` {id: $id})
         SET o += $props
         RETURN o
         `
@@ -206,7 +207,7 @@ func (dao *OrganizationDAO) DeleteOrganization(ctx context.Context, orgID string
 
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (o:ORGANIZATION {id: $id})
+        MATCH (o:` + echo_neo4j.LabelOrganization + ` {id: $id})
         DETACH DELETE o
         `
 		result, err := transaction.Run(query, map[string]interface{}{"id": orgID})
@@ -262,7 +263,7 @@ func (dao *OrganizationDAO) GetOrganization(ctx context.Context, orgID string) (
 	defer session.Close()
 
 	query := `
-    MATCH (o:ORGANIZATION {id: $id})
+    MATCH (o:` + echo_neo4j.LabelOrganization + ` {id: $id})
     RETURN o
     `
 	result, err := session.Run(query, map[string]interface{}{"id": orgID})
@@ -304,7 +305,7 @@ func (dao *OrganizationDAO) ListOrganizations(ctx context.Context, limit int, of
 	defer session.Close()
 
 	query := `
-    MATCH (o:ORGANIZATION)
+    MATCH (o:` + echo_neo4j.LabelOrganization + `)
     RETURN o
     ORDER BY o.createdAt DESC
     SKIP $offset
@@ -349,7 +350,7 @@ func (dao *OrganizationDAO) SearchOrganizations(ctx context.Context, criteria mo
 	defer session.Close()
 
 	var queryBuilder strings.Builder
-	queryBuilder.WriteString("MATCH (o:ORGANIZATION) WHERE 1=1")
+	queryBuilder.WriteString(fmt.Sprintf("MATCH (o:%s) WHERE 1=1", echo_neo4j.LabelOrganization))
 
 	params := make(map[string]interface{})
 

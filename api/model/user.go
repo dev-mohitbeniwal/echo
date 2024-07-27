@@ -12,13 +12,12 @@ type User struct {
 	UserType       string            `json:"user_type"` // "AliveLife", "CorporateAdmin", "DepartmentUser"
 	OrganizationID string            `json:"organization_id,omitempty"`
 	DepartmentID   string            `json:"department_id,omitempty"`
-	RoleIds        []string          `json:"roles,omitempty"`       // List of role IDs
-	GroupIds       []string          `json:"groups,omitempty"`      // List of group IDs
+	RoleIds        []string          `json:"role_ids,omitempty"`    // List of role IDs
+	GroupIds       []string          `json:"group_ids,omitempty"`   // List of group IDs
 	Permissions    []string          `json:"permissions,omitempty"` // List of permission IDs (Relationship to resources)
 	Attributes     map[string]string `json:"attributes"`
 	Status         string            `json:"status"` // "Active", "Inactive", "Suspended", etc.
 	LastLogin      *time.Time        `json:"last_login,omitempty"`
-	FailedLogins   int               `json:"failed_logins"`
 	CreatedAt      time.Time         `json:"created_at"`
 	UpdatedAt      time.Time         `json:"updated_at"`
 	CreatedBy      string            `json:"created_by,omitempty"` // ID of the user who created this user

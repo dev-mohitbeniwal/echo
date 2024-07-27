@@ -42,7 +42,7 @@ func (dao *UserDAO) EnsureUniqueConstraint(ctx context.Context) error {
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
         CREATE CONSTRAINT unique_user_id IF NOT EXISTS
-        FOR (u:USER) REQUIRE u.id IS UNIQUE
+        FOR (u:` + echo_neo4j.LabelUser + `) REQUIRE u.id IS UNIQUE
         `
 		_, err := transaction.Run(query, nil)
 		return nil, err
@@ -69,19 +69,46 @@ func (dao *UserDAO) CreateUser(ctx context.Context, user model.User) (string, er
 
 	result, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        CREATE (u:` + echo_neo4j.LabelUser + `{id: $id})
-        SET u += $props
-        WITH u
-        OPTIONAL MATCH (o:` + echo_neo4j.LabelOrganization + `{id: $organizationID})
-        FOREACH (_ IN CASE WHEN o IS NOT NULL THEN [1] ELSE [] END |
-            CREATE (u)-[:BELONGS_TO]->(o)
-        )
-        WITH u
-        OPTIONAL MATCH (d:` + echo_neo4j.LabelDepartment + ` {id: $departmentID})
-        FOREACH (_ IN CASE WHEN d IS NOT NULL THEN [1] ELSE [] END |
-            CREATE (u)-[:` + echo_neo4j.RelMemberOf + `]->(d)
-        )
-        RETURN u.id as id
+            CREATE (u:USER {id: $id})
+            SET u += $props
+            WITH u
+            OPTIONAL MATCH (o:ORGANIZATION {id: $organizationID})
+            FOREACH (_ IN CASE WHEN o IS NOT NULL THEN [1] ELSE [] END |
+                CREATE (u)-[:WORKS_FOR]->(o)
+            )
+            WITH u
+            OPTIONAL MATCH (d:DEPARTMENT {id: $departmentID})
+            FOREACH (_ IN CASE WHEN d IS NOT NULL THEN [1] ELSE [] END |
+                CREATE (u)-[:MEMBER_OF]->(d)
+            )
+        `
+
+		// Conditionally add role relationships
+		if len(user.RoleIds) > 0 {
+			query += `
+                WITH u
+                UNWIND $roleIds AS roleId
+                OPTIONAL MATCH (r:ROLE {id: roleId})
+                FOREACH (_ IN CASE WHEN r IS NOT NULL THEN [1] ELSE [] END |
+                    CREATE (u)-[:HAS_ROLE]->(r)
+                )
+            `
+		}
+
+		// Conditionally add group relationships
+		if len(user.GroupIds) > 0 {
+			query += `
+                WITH u
+                UNWIND $groupIds AS groupId
+                OPTIONAL MATCH (g:GROUP {id: groupId})
+                FOREACH (_ IN CASE WHEN g IS NOT NULL THEN [1] ELSE [] END |
+                    CREATE (u)-[:BELONGS_TO_GROUP]->(g)
+                )
+            `
+		}
+
+		query += `
+            RETURN u.id as id, u.name as name, u.email as email
         `
 
 		attributesJSON, err := json.Marshal(user.Attributes)
@@ -89,6 +116,7 @@ func (dao *UserDAO) CreateUser(ctx context.Context, user model.User) (string, er
 			return nil, fmt.Errorf("failed to marshal attributes: %w", err)
 		}
 
+		now := time.Now().Format(time.RFC3339)
 		params := map[string]interface{}{
 			"id": user.ID,
 			"props": map[string]interface{}{
@@ -99,23 +127,42 @@ func (dao *UserDAO) CreateUser(ctx context.Context, user model.User) (string, er
 				"organizationID": user.OrganizationID,
 				"departmentID":   user.DepartmentID,
 				"attributes":     string(attributesJSON),
-				"createdAt":      time.Now().Format(time.RFC3339),
-				"updatedAt":      time.Now().Format(time.RFC3339),
+				"status":         user.Status,
+				"createdAt":      now,
+				"updatedAt":      now,
 			},
 			"organizationID": user.OrganizationID,
 			"departmentID":   user.DepartmentID,
+			"roleIds":        user.RoleIds,
+			"groupIds":       user.GroupIds,
+		}
+
+		// Handle nil slices
+		if user.RoleIds == nil {
+			params["roleIds"] = []string{}
+		}
+		if user.GroupIds == nil {
+			params["groupIds"] = []string{}
 		}
 
 		result, err := transaction.Run(query, params)
 		if err != nil {
-			return nil, echo_errors.ErrDatabaseOperation
+			logger.Error("Failed to execute query", zap.Error(err))
+			return nil, err
 		}
 
 		if result.Next() {
-			return result.Record().Values[0], nil
+			record := result.Record()
+			logger.Info("Result record", zap.Any("record", record.Values))
+			id, found := record.Get("id")
+			if !found {
+				logger.Error("ID not found in result")
+				return nil, fmt.Errorf("ID not found in result")
+			}
+			return id, nil
 		}
 
-		return nil, echo_errors.ErrInternalServer
+		return nil, fmt.Errorf("no results returned")
 	})
 
 	duration := time.Since(start)
@@ -163,9 +210,9 @@ func (dao *UserDAO) verifyRelationships(ctx context.Context, userID, orgID, dept
 	defer session.Close()
 
 	query := `
-    MATCH (u:USER {id: $userID})
-    OPTIONAL MATCH (u)-[r:BELONGS_TO]->(o:ORGANIZATION)
-    OPTIONAL MATCH (u)-[m:MEMBER_OF]->(d:DEPARTMENT)
+    MATCH (u:` + echo_neo4j.LabelUser + ` {id: $userID})
+    OPTIONAL MATCH (u)-[r:` + echo_neo4j.RelWorksFor + `]->(o:` + echo_neo4j.LabelOrganization + `)
+    OPTIONAL MATCH (u)-[m:` + echo_neo4j.RelMemberOf + `]->(d:` + echo_neo4j.LabelDepartment + `)
     RETURN r, m, o.id as orgId, d.id as deptId
     `
 
@@ -216,8 +263,36 @@ func (dao *UserDAO) UpdateUser(ctx context.Context, user model.User) (*model.Use
 
 	_, err = session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (u:USER {id: $id})
+        MATCH (u:` + echo_neo4j.LabelUser + ` {id: $id})
         SET u += $props
+        WITH u
+        OPTIONAL MATCH (u)-[oldOrgRel:` + echo_neo4j.RelWorksFor + `]->(:` + echo_neo4j.LabelOrganization + `)
+        DELETE oldOrgRel
+        WITH u
+        MATCH (o:` + echo_neo4j.LabelOrganization + ` {id: $organizationID})
+        MERGE (u)-[:` + echo_neo4j.RelWorksFor + `]->(o)
+        WITH u
+        OPTIONAL MATCH (u)-[oldDeptRel:` + echo_neo4j.RelMemberOf + `]->(:` + echo_neo4j.LabelDepartment + `)
+        DELETE oldDeptRel
+        WITH u
+        OPTIONAL MATCH (d:` + echo_neo4j.LabelDepartment + ` {id: $departmentID})
+        FOREACH (_ IN CASE WHEN d IS NOT NULL THEN [1] ELSE [] END |
+            MERGE (u)-[:` + echo_neo4j.RelMemberOf + `]->(d)
+        )
+        WITH u
+        OPTIONAL MATCH (u)-[oldRoleRel:` + echo_neo4j.RelHasRole + `]->(:` + echo_neo4j.LabelRole + `)
+        DELETE oldRoleRel
+        WITH u
+        UNWIND $roleIds AS roleId
+        MATCH (r:` + echo_neo4j.LabelRole + ` {id: roleId})
+        MERGE (u)-[:` + echo_neo4j.RelHasRole + `]->(r)
+        WITH u
+        OPTIONAL MATCH (u)-[oldGroupRel:` + echo_neo4j.RelBelongsToGroup + `]->(:` + echo_neo4j.LabelGroup + `)
+        DELETE oldGroupRel
+        WITH u
+        UNWIND $groupIds AS groupId
+        MATCH (g:` + echo_neo4j.LabelGroup + ` {id: groupId})
+        MERGE (u)-[:` + echo_neo4j.RelBelongsToGroup + `]->(g)
         RETURN u
         `
 
@@ -226,18 +301,24 @@ func (dao *UserDAO) UpdateUser(ctx context.Context, user model.User) (*model.Use
 		params := map[string]interface{}{
 			"id": user.ID,
 			"props": map[string]interface{}{
-				"username":       user.Username,
-				"email":          user.Email,
-				"userType":       user.UserType,
-				"organizationID": user.OrganizationID,
-				"departmentID":   user.DepartmentID,
-				"attributes":     string(attributesJSON),
-				"updatedAt":      time.Now().Format(time.RFC3339),
+				echo_neo4j.AttrName:      user.Name,
+				"username":               user.Username,
+				echo_neo4j.AttrEmail:     user.Email,
+				echo_neo4j.AttrUserType:  user.UserType,
+				"organizationID":         user.OrganizationID,
+				"departmentID":           user.DepartmentID,
+				"attributes":             string(attributesJSON),
+				echo_neo4j.AttrUpdatedAt: time.Now().Format(time.RFC3339),
 			},
+			"organizationID": user.OrganizationID,
+			"departmentID":   user.DepartmentID,
+			"roleIds":        user.RoleIds,
+			"groupIds":       user.GroupIds,
 		}
 
 		result, err := transaction.Run(query, params)
 		if err != nil {
+			logger.Error("Failed to execute query", zap.Error(err), zap.Any("params", params))
 			return nil, echo_errors.ErrDatabaseOperation
 		}
 
@@ -291,7 +372,7 @@ func (dao *UserDAO) DeleteUser(ctx context.Context, userID string) error {
 
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (u:USER {id: $id})
+        MATCH (u:` + echo_neo4j.LabelUser + ` {id: $id})
         DETACH DELETE u
         `
 		result, err := transaction.Run(query, map[string]interface{}{"id": userID})
@@ -347,7 +428,7 @@ func (dao *UserDAO) GetUser(ctx context.Context, userID string) (*model.User, er
 	defer session.Close()
 
 	query := `
-    MATCH (u:USER {id: $id})
+    MATCH (u:` + echo_neo4j.LabelUser + ` {id: $id})
     RETURN u
     `
 	result, err := session.Run(query, map[string]interface{}{"id": userID})
@@ -389,7 +470,7 @@ func (dao *UserDAO) ListUsers(ctx context.Context, limit int, offset int) ([]*mo
 	defer session.Close()
 
 	query := `
-    MATCH (u:USER)
+    MATCH (u:` + echo_neo4j.LabelUser + `)
     RETURN u
     ORDER BY u.createdAt DESC
     SKIP $offset

@@ -116,7 +116,7 @@ var RelationshipStyles = map[string]RelationshipStyle{
 		Caption:   "type",
 		ArrowSize: 3,
 	},
-	"HAS_PERMISSION": {
+	"HAS_` + echo_neo4j.LabelPermission + `": {
 		Color:     "#AAAAAA",
 		Width:     1,
 		Style:     "dotted",

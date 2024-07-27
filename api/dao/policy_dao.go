@@ -16,6 +16,7 @@ import (
 	echo_errors "github.com/dev-mohitbeniwal/echo/api/errors"
 	logger "github.com/dev-mohitbeniwal/echo/api/logging"
 	"github.com/dev-mohitbeniwal/echo/api/model"
+	echo_neo4j "github.com/dev-mohitbeniwal/echo/api/model/neo4j"
 )
 
 type PolicyDAO struct {
@@ -46,7 +47,7 @@ func (dao *PolicyDAO) EnsureUniqueConstraint(ctx context.Context) error {
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
         CREATE CONSTRAINT unique_policy_id IF NOT EXISTS
-        FOR (p:POLICY) REQUIRE p.id IS UNIQUE
+        FOR (p:` + echo_neo4j.LabelPolicy + `) REQUIRE p.id IS UNIQUE
         `
 		_, err := transaction.Run(query, nil)
 		if err != nil {
@@ -65,6 +66,7 @@ func (dao *PolicyDAO) EnsureUniqueConstraint(ctx context.Context) error {
 }
 
 // CreatePolicy creates a new policy node in Neo4j
+// CreatePolicy creates a new policy node in Neo4j
 func (dao *PolicyDAO) CreatePolicy(ctx context.Context, policy model.Policy, userID string) (string, error) {
 	start := time.Now()
 	logger.Info("Creating new policy", zap.String("policyName", policy.Name))
@@ -78,7 +80,7 @@ func (dao *PolicyDAO) CreatePolicy(ctx context.Context, policy model.Policy, use
 	result, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		// First, check if the policy already exists
 		checkQuery := `
-        MATCH (p:POLICY {id: $id})
+        MATCH (p:` + echo_neo4j.LabelPolicy + ` {id: $id})
         RETURN p.id
         `
 		checkResult, err := transaction.Run(checkQuery, map[string]interface{}{"id": policy.ID})
@@ -90,9 +92,8 @@ func (dao *PolicyDAO) CreatePolicy(ctx context.Context, policy model.Policy, use
 		}
 
 		// If we get here, the policy doesn't exist, so create it
-		// If we get here, the policy doesn't exist, so create it
 		createQuery := `
-            MERGE (p:POLICY {id: $id})
+            MERGE (p:` + echo_neo4j.LabelPolicy + ` {id: $id})
             ON CREATE SET p += $props
             ON MATCH SET p += $props
             RETURN p.id as id
@@ -127,14 +128,41 @@ func (dao *PolicyDAO) CreatePolicy(ctx context.Context, policy model.Policy, use
 		if err != nil {
 			return nil, echo_errors.ErrDatabaseOperation
 		}
-		if createResult.Next() {
-			id, found := createResult.Record().Get("id")
-			if !found {
-				return nil, echo_errors.ErrInternalServer
-			}
-			return id, nil
+		if !createResult.Next() {
+			return nil, echo_errors.ErrInternalServer
 		}
-		return nil, echo_errors.ErrInternalServer
+		id, found := createResult.Record().Get("id")
+		if !found {
+			return nil, echo_errors.ErrInternalServer
+		}
+
+		// Create relationships for subjects if they are users
+		for _, subject := range policy.Subjects {
+			if subject.Type == "user" {
+				_, err = transaction.Run(`
+					MATCH (u:`+echo_neo4j.LabelUser+` {id: $userID})
+					MATCH (o:`+echo_neo4j.LabelOrganization+` {id: u.organizationID})
+					MATCH (d:`+echo_neo4j.LabelDepartment+` {id: u.departmentID})
+					MERGE (u)-[:`+echo_neo4j.RelWorksFor+`]->(o)
+					MERGE (u)-[:`+echo_neo4j.RelMemberOf+`]->(d)
+					WITH u
+					UNWIND u.roleIds AS roleId
+					MATCH (r:`+echo_neo4j.LabelRole+` {id: roleId})
+					MERGE (u)-[:`+echo_neo4j.RelHasRole+`]->(r)
+					WITH u
+					UNWIND u.groupIds AS groupId
+					MATCH (g:`+echo_neo4j.LabelGroup+` {id: groupId})
+					MERGE (u)-[:`+echo_neo4j.RelBelongsToGroup+`]->(g)
+				`, map[string]interface{}{
+					"userID": subject.UserID,
+				})
+				if err != nil {
+					return nil, fmt.Errorf("failed to create user relationships: %w", err)
+				}
+			}
+		}
+
+		return id, nil
 	})
 
 	duration := time.Since(start)
@@ -183,7 +211,7 @@ func (dao *PolicyDAO) UpdatePolicy(ctx context.Context, policy model.Policy, use
 
 	_, err = session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-				MATCH (p:POLICY {id: $id})
+				MATCH (p:` + echo_neo4j.LabelPolicy + ` {id: $id})
 				SET p.name = $name, p.description = $description, p.effect = $effect,
 					p.priority = $priority, p.version = $version, p.updatedAt = $updatedAt, p.createdAt = $createdAt,
 					p.active = $active, p.activationDate = $activationDate, p.deactivationDate = $deactivationDate,
@@ -213,13 +241,42 @@ func (dao *PolicyDAO) UpdatePolicy(ctx context.Context, policy model.Policy, use
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute update query: %w", err)
 		}
-		if result.Next() {
-			node := result.Record().Values[0].(neo4j.Node)
-			fmt.Println("Node: ", node.Props)
-			updatedPolicy, _ = mapNodeToPolicy(node)
-			return nil, nil
+		if !result.Next() {
+			return nil, echo_errors.ErrPolicyNotFound
 		}
-		return nil, echo_errors.ErrPolicyNotFound
+		node := result.Record().Values[0].(neo4j.Node)
+		updatedPolicy, err = mapNodeToPolicy(node)
+		if err != nil {
+			return nil, fmt.Errorf("failed to map updated policy: %w", err)
+		}
+
+		// Update relationships for subjects if they are users
+		for _, subject := range policy.Subjects {
+			if subject.Type == "user" {
+				_, err = transaction.Run(`
+					MATCH (u:`+echo_neo4j.LabelUser+` {id: $userID})
+					MATCH (o:`+echo_neo4j.LabelOrganization+` {id: u.organizationID})
+					MATCH (d:`+echo_neo4j.LabelDepartment+` {id: u.departmentID})
+					MERGE (u)-[:`+echo_neo4j.RelWorksFor+`]->(o)
+					MERGE (u)-[:`+echo_neo4j.RelMemberOf+`]->(d)
+					WITH u
+					UNWIND u.roleIds AS roleId
+					MATCH (r:`+echo_neo4j.LabelRole+` {id: roleId})
+					MERGE (u)-[:`+echo_neo4j.RelHasRole+`]->(r)
+					WITH u
+					UNWIND u.groupIds AS groupId
+					MATCH (g:`+echo_neo4j.LabelGroup+` {id: groupId})
+					MERGE (u)-[:`+echo_neo4j.RelBelongsToGroup+`]->(g)
+				`, map[string]interface{}{
+					"userID": subject.UserID,
+				})
+				if err != nil {
+					return nil, fmt.Errorf("failed to update user relationships: %w", err)
+				}
+			}
+		}
+
+		return nil, nil
 	})
 
 	duration := time.Since(start)
@@ -262,7 +319,7 @@ func (dao *PolicyDAO) DeletePolicy(ctx context.Context, policyID string, userID 
 
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (p:POLICY {id: $id})
+        MATCH (p:` + echo_neo4j.LabelPolicy + ` {id: $id})
         DETACH DELETE p
         `
 		result, err := transaction.Run(query, map[string]interface{}{"id": policyID})
@@ -317,7 +374,7 @@ func (dao *PolicyDAO) GetPolicy(ctx context.Context, policyID string) (*model.Po
 	defer session.Close()
 
 	query := `
-    MATCH (p:POLICY {id: $id})
+    MATCH (p:` + echo_neo4j.LabelPolicy + ` {id: $id})
     RETURN p
     `
 	result, err := session.Run(query, map[string]interface{}{"id": policyID})
@@ -360,7 +417,7 @@ func (dao *PolicyDAO) ListPolicies(ctx context.Context, limit int, offset int) (
 	defer session.Close()
 
 	query := `
-    MATCH (p:POLICY)
+    MATCH (p:` + echo_neo4j.LabelPolicy + `)
     RETURN p
     ORDER BY p.createdAt DESC
     SKIP $offset
@@ -406,7 +463,7 @@ func (dao *PolicyDAO) SearchPolicies(ctx context.Context, criteria model.PolicyS
 	defer session.Close()
 
 	var queryBuilder strings.Builder
-	queryBuilder.WriteString("MATCH (p:POLICY) WHERE 1=1")
+	queryBuilder.WriteString("MATCH (p:` + echo_neo4j.LabelPolicy + `) WHERE 1=1")
 
 	params := make(map[string]interface{})
 
@@ -491,10 +548,10 @@ func (dao *PolicyDAO) AnalyzePolicyUsage(ctx context.Context, policyID string) (
 	defer session.Close()
 
 	query := `
-		MATCH (p:POLICY {id: $policyID})
-		OPTIONAL MATCH (p)-[:APPLIES_TO]->(r:Resource)
-		OPTIONAL MATCH (p)-[:APPLIES_TO]->(s:Subject)
-		OPTIONAL MATCH (p)-[:HAS_CONDITION]->(c:Condition)
+		MATCH (p:` + echo_neo4j.LabelPolicy + ` {id: $policyID})
+		OPTIONAL MATCH (p)-[:` + echo_neo4j.RelAppliesTo + `]->(r:Resource)
+		OPTIONAL MATCH (p)-[:` + echo_neo4j.RelAppliesTo + `]->(s:Subject)
+		OPTIONAL MATCH (p)-[:` + echo_neo4j.RelHasCondition + `]->(c:Condition)
 		RETURN 
 			p.id AS policyID,
 			p.name AS policyName,
@@ -585,7 +642,11 @@ func mapNodeToPolicy(node neo4j.Node) (*model.Policy, error) {
 
 	// Effect
 	if effect, ok := props["effect"].(string); ok {
-		policy.Effect = effect
+		if effect == echo_neo4j.PolicyEffectAllow || effect == echo_neo4j.PolicyEffectDeny {
+			policy.Effect = effect
+		} else {
+			return nil, fmt.Errorf("invalid policy effect: %v", effect)
+		}
 	} else {
 		return nil, fmt.Errorf("failed to assert type for policy effect: %v", props["effect"])
 	}

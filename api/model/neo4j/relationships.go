@@ -6,6 +6,9 @@ const (
 	// RelPartOf represents the relationship between a department and its organization
 	RelPartOf = "PART_OF"
 
+	// RelChildOf represents the relationship between a department and its parent department
+	RelChildOf = "CHILD_OF"
+
 	// RelWorksFor represents the relationship between a user and their organization
 	RelWorksFor = "WORKS_FOR"
 
@@ -16,7 +19,7 @@ const (
 	RelHasRole = "HAS_ROLE"
 
 	// RelHasPermission represents the relationship between a role and its permissions
-	RelHasPermission = "HAS_PERMISSION"
+	RelHasPermission = "HAS_` + echo_neo4j.LabelPermission + `"
 
 	// RelOwns represents the relationship between an organization and its resources
 	RelOwns = "OWNS"
@@ -26,6 +29,8 @@ const (
 
 	// RelAppliesTo represents the relationship between a policy and the resources it applies to
 	RelAppliesTo = "APPLIES_TO"
+
+	RelHasCondition = "HAS_CONDITION"
 
 	// RelHasAttribute represents the relationship between a node and its attributes
 	RelHasAttribute = "HAS_ATTRIBUTE"

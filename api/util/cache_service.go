@@ -62,3 +62,45 @@ func (c *CacheService) DeleteUser(ctx context.Context, userID string) error {
 func (c *CacheService) GetUser(ctx context.Context, userID string) (*model.User, error) {
 	return db.GetCachedUser(ctx, userID)
 }
+
+func (c *CacheService) SetRole(ctx context.Context, role model.Role) error {
+	return db.CacheRole(ctx, &role)
+}
+
+func (c *CacheService) DeleteRole(ctx context.Context, roleID string) error {
+	return db.DeleteCachedRole(ctx, roleID)
+}
+
+func (c *CacheService) GetRole(ctx context.Context, roleID string) (*model.Role, error) {
+	return db.GetCachedRole(ctx, roleID)
+}
+
+// SetGroup
+func (c *CacheService) SetGroup(ctx context.Context, group model.Group) error {
+	return db.CacheGroup(ctx, &group)
+}
+
+// DeleteGroup
+func (c *CacheService) DeleteGroup(ctx context.Context, groupID string) error {
+	return db.DeleteCachedGroup(ctx, groupID)
+}
+
+// GetGroup
+func (c *CacheService) GetGroup(ctx context.Context, groupID string) (*model.Group, error) {
+	return db.GetCachedGroup(ctx, groupID)
+}
+
+// SetPermission
+func (c *CacheService) SetPermission(ctx context.Context, permission model.Permission) error {
+	return db.CachePermission(ctx, &permission)
+}
+
+// DeletePermission
+func (c *CacheService) DeletePermission(ctx context.Context, permissionID string) error {
+	return db.DeleteCachedPermission(ctx, permissionID)
+}
+
+// GetPermission
+func (c *CacheService) GetPermission(ctx context.Context, permissionID string) (*model.Permission, error) {
+	return db.GetCachedPermission(ctx, permissionID)
+}

@@ -99,3 +99,30 @@ func (n *NotificationService) NotifyUserChange(ctx context.Context, changeType s
 		zap.String("userName", user.Username))
 	return nil
 }
+
+func (n *NotificationService) NotifyRoleChange(ctx context.Context, changeType string, role model.Role) error {
+	// Logic to notify users about role changes
+	logger.Info("Notifying role change",
+		zap.String("changeType", changeType),
+		zap.String("roleID", role.ID),
+		zap.String("roleName", role.Name))
+	return nil
+}
+
+func (n *NotificationService) NotifyGroupChange(ctx context.Context, changeType string, group model.Group) error {
+	// Logic to notify users about group changes
+	logger.Info("Notifying group change",
+		zap.String("changeType", changeType),
+		zap.String("groupID", group.ID),
+		zap.String("groupName", group.Name))
+	return nil
+}
+
+func (n *NotificationService) NotifyPermissionChange(ctx context.Context, changeType string, permission model.Permission) error {
+	// Logic to notify users about permission changes
+	logger.Info("Notifying permission change",
+		zap.String("changeType", changeType),
+		zap.String("permissionID", permission.ID),
+		zap.String("permissionName", permission.Name))
+	return nil
+}

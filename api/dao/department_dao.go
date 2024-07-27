@@ -15,6 +15,7 @@ import (
 	echo_errors "github.com/dev-mohitbeniwal/echo/api/errors"
 	logger "github.com/dev-mohitbeniwal/echo/api/logging"
 	"github.com/dev-mohitbeniwal/echo/api/model"
+	echo_neo4j "github.com/dev-mohitbeniwal/echo/api/model/neo4j"
 	helper_util "github.com/dev-mohitbeniwal/echo/api/util/helper"
 )
 
@@ -39,9 +40,9 @@ func (dao *DepartmentDAO) EnsureUniqueConstraint(ctx context.Context) error {
 
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        CREATE CONSTRAINT unique_dept_id IF NOT EXISTS
-        FOR (d:DEPARTMENT) REQUIRE d.id IS UNIQUE
-        `
+		CREATE CONSTRAINT unique_dept_id IF NOT EXISTS
+		FOR (d:` + echo_neo4j.LabelDepartment + `) REQUIRE d.` + echo_neo4j.AttrID + ` IS UNIQUE
+		`
 		_, err := transaction.Run(query, nil)
 		return nil, err
 	})
@@ -67,17 +68,17 @@ func (dao *DepartmentDAO) CreateDepartment(ctx context.Context, department model
 
 	result, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        CREATE (d:DEPARTMENT {id: $id, name: $name, organizationID: $orgId, parentID: $parentId, createdAt: $createdAt, updatedAt: $updatedAt})
-        WITH d
-        MATCH (o:ORGANIZATION {id: $orgId})
-        CREATE (d)-[:BELONGS_TO]->(o)
-        WITH d, o
-        OPTIONAL MATCH (parent:DEPARTMENT {id: $parentId})
-        FOREACH (_ IN CASE WHEN parent IS NOT NULL THEN [1] ELSE [] END |
-            CREATE (d)-[:CHILD_OF]->(parent)
-        )
-        RETURN d.id as id
-        `
+		CREATE (d:` + echo_neo4j.LabelDepartment + ` {` + echo_neo4j.AttrID + `: $id, ` + echo_neo4j.AttrName + `: $name, ` + echo_neo4j.AttrOrganizationID + `: $orgId, ` + echo_neo4j.AttrParentID + `: $parentId, ` + echo_neo4j.AttrCreatedAt + `: $createdAt, ` + echo_neo4j.AttrUpdatedAt + `: $updatedAt})
+		WITH d
+		MATCH (o:` + echo_neo4j.LabelOrganization + ` {` + echo_neo4j.AttrID + `: $orgId})
+		CREATE (d)-[:` + echo_neo4j.RelPartOf + `]->(o)
+		WITH d, o
+		OPTIONAL MATCH (parent:` + echo_neo4j.LabelDepartment + ` {` + echo_neo4j.AttrID + `: $parentId})
+		FOREACH (_ IN CASE WHEN parent IS NOT NULL THEN [1] ELSE [] END |
+			CREATE (d)-[:` + echo_neo4j.RelChildOf + `]->(parent)
+		)
+		RETURN d.` + echo_neo4j.AttrID + ` as id
+		`
 
 		params := map[string]interface{}{
 			"id":        department.ID,
@@ -588,14 +589,14 @@ func (dao *DepartmentDAO) MoveDepartment(ctx context.Context, deptID string, new
 
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (d:DEPARTMENT {id: $deptId})
-        MATCH (newParent:DEPARTMENT {id: $newParentId})
-        OPTIONAL MATCH (d)-[r:BELONGS_TO]->(:DEPARTMENT)
-        DELETE r
-        MERGE (d)-[:BELONGS_TO]->(newParent)
-        SET d.parentID = $newParentId, d.updatedAt = $updatedAt
-        RETURN d
-        `
+		MATCH (d:` + echo_neo4j.LabelDepartment + ` {` + echo_neo4j.AttrID + `: $deptId})
+		MATCH (newParent:` + echo_neo4j.LabelDepartment + ` {` + echo_neo4j.AttrID + `: $newParentId})
+		OPTIONAL MATCH (d)-[r:` + echo_neo4j.RelChildOf + `]->(:` + echo_neo4j.LabelDepartment + `)
+		DELETE r
+		MERGE (d)-[:` + echo_neo4j.RelChildOf + `]->(newParent)
+		SET d.` + echo_neo4j.AttrParentID + ` = $newParentId, d.` + echo_neo4j.AttrUpdatedAt + ` = $updatedAt
+		RETURN d
+		`
 		params := map[string]interface{}{
 			"deptId":      deptID,
 			"newParentId": newParentID,

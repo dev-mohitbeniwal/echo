@@ -9,10 +9,13 @@ import (
 )
 
 type Services struct {
-	Policy IPolicyService
-	User   IUserService
-	Org    IOrganizationService
-	Dept   IDepartmentService
+	Policy     IPolicyService
+	User       IUserService
+	Org        IOrganizationService
+	Dept       IDepartmentService
+	Role       IRoleService
+	Group      IGroupService
+	Permission IPermissionService
 }
 
 func InitializeServices(
@@ -27,12 +30,18 @@ func InitializeServices(
 	userDAO := dao.NewUserDAO(driver, auditService)
 	organizationDAO := dao.NewOrganizationDAO(driver, auditService)
 	departmentDAO := dao.NewDepartmentDAO(driver, auditService)
+	roleDAO := dao.NewRoleDAO(driver, auditService)
+	groupDAO := dao.NewGroupDAO(driver, auditService)
+	permissionDAO := dao.NewPermissionDAO(driver, auditService)
 
 	services := &Services{
-		Policy: NewPolicyService(policyDAO, validationUtil, cacheService, notificationSvc, eventBus),
-		User:   NewUserService(userDAO, validationUtil, cacheService, notificationSvc, eventBus),
-		Org:    NewOrganizationService(organizationDAO, validationUtil, cacheService, notificationSvc, eventBus),
-		Dept:   NewDepartmentService(departmentDAO, validationUtil, cacheService, notificationSvc, eventBus),
+		Policy:     NewPolicyService(policyDAO, validationUtil, cacheService, notificationSvc, eventBus),
+		User:       NewUserService(userDAO, validationUtil, cacheService, notificationSvc, eventBus),
+		Org:        NewOrganizationService(organizationDAO, validationUtil, cacheService, notificationSvc, eventBus),
+		Dept:       NewDepartmentService(departmentDAO, validationUtil, cacheService, notificationSvc, eventBus),
+		Role:       NewRoleService(roleDAO, validationUtil, cacheService, notificationSvc, eventBus),
+		Group:      NewGroupService(groupDAO, validationUtil, cacheService, notificationSvc, eventBus),
+		Permission: NewPermissionService(permissionDAO, validationUtil, cacheService, notificationSvc, eventBus),
 	}
 
 	return services, nil

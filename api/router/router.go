@@ -27,6 +27,9 @@ func SetupRouter(
 	controllers.User.RegisterRoutes(api)
 	controllers.Org.RegisterRoutes(api)
 	controllers.Dept.RegisterRoutes(api)
+	controllers.Role.RegisterRoutes(api)
+	controllers.Group.RegisterRoutes(api)
+	controllers.Permission.RegisterRoutes(api)
 
 	return router
 }

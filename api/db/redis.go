@@ -298,6 +298,153 @@ func GetCachedUser(ctx context.Context, userID string) (*model.User, error) {
 	return &user, nil
 }
 
+func CacheRole(ctx context.Context, role *model.Role) error {
+	roleJSON, err := json.Marshal(role)
+	if err != nil {
+		return fmt.Errorf("failed to marshal role: %w", err)
+	}
+
+	key := fmt.Sprintf("role:%s", role.ID)
+	defaultTTL := viper.GetDuration("redis.defaultCacheTTL")
+	err = RedisClient.Set(ctx, key, roleJSON, defaultTTL).Err()
+	if err != nil {
+		return fmt.Errorf("failed to cache role: %w", err)
+	}
+
+	logger.Debug("Role cached successfully", zap.String("roleID", role.ID))
+	return nil
+}
+
+func DeleteCachedRole(ctx context.Context, roleID string) error {
+	key := fmt.Sprintf("role:%s", roleID)
+	err := RedisClient.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete role from cache: %w", err)
+	}
+	logger.Debug("Role deleted from cache", zap.String("roleID", roleID))
+	return nil
+}
+
+func GetCachedRole(ctx context.Context, roleID string) (*model.Role, error) {
+	key := fmt.Sprintf("role:%s", roleID)
+	roleJSON, err := RedisClient.Get(ctx, key).Result()
+	if err == redis.Nil {
+		logger.Debug("Role not found in cache", zap.String("roleID", roleID))
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to get role from cache: %w", err)
+	}
+
+	var role model.Role
+	err = json.Unmarshal([]byte(roleJSON), &role)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal role: %w", err)
+	}
+
+	logger.Debug("Role retrieved from cache", zap.String("roleID", roleID))
+	return &role, nil
+}
+
+// CacheGroup
+func CacheGroup(ctx context.Context, group *model.Group) error {
+	groupJSON, err := json.Marshal(group)
+	if err != nil {
+		return fmt.Errorf("failed to marshal group: %w", err)
+	}
+
+	key := fmt.Sprintf("group:%s", group.ID)
+	defaultTTL := viper.GetDuration("redis.defaultCacheTTL")
+	err = RedisClient.Set(ctx, key, groupJSON, defaultTTL).Err()
+	if err != nil {
+		return fmt.Errorf("failed to cache group: %w", err)
+	}
+
+	logger.Debug("Group cached successfully", zap.String("groupID", group.ID))
+	return nil
+}
+
+// DeleteGroup
+func DeleteCachedGroup(ctx context.Context, groupID string) error {
+	key := fmt.Sprintf("group:%s", groupID)
+	err := RedisClient.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete group from cache: %w", err)
+	}
+	logger.Debug("Group deleted from cache", zap.String("groupID", groupID))
+	return nil
+}
+
+// GetGroup
+func GetCachedGroup(ctx context.Context, groupID string) (*model.Group, error) {
+	key := fmt.Sprintf("group:%s", groupID)
+	groupJSON, err := RedisClient.Get(ctx, key).Result()
+	if err == redis.Nil {
+		logger.Debug("Group not found in cache", zap.String("groupID", groupID))
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to get group from cache: %w", err)
+	}
+
+	var group model.Group
+	err = json.Unmarshal([]byte(groupJSON), &group)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal group: %w", err)
+	}
+
+	logger.Debug("Group retrieved from cache", zap.String("groupID", groupID))
+	return &group, nil
+}
+
+// CachePermission
+func CachePermission(ctx context.Context, permission *model.Permission) error {
+	permissionJSON, err := json.Marshal(permission)
+	if err != nil {
+		return fmt.Errorf("failed to marshal permission: %w", err)
+	}
+
+	key := fmt.Sprintf("permission:%s", permission.ID)
+	defaultTTL := viper.GetDuration("redis.defaultCacheTTL")
+	err = RedisClient.Set(ctx, key, permissionJSON, defaultTTL).Err()
+	if err != nil {
+		return fmt.Errorf("failed to cache permission: %w", err)
+	}
+
+	logger.Debug("Permission cached successfully", zap.String("permissionID", permission.ID))
+	return nil
+}
+
+// DeletePermission
+func DeleteCachedPermission(ctx context.Context, permissionID string) error {
+	key := fmt.Sprintf("permission:%s", permissionID)
+	err := RedisClient.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete permission from cache: %w", err)
+	}
+	logger.Debug("Permission deleted from cache", zap.String("permissionID", permissionID))
+	return nil
+}
+
+// GetPermission
+func GetCachedPermission(ctx context.Context, permissionID string) (*model.Permission, error) {
+	key := fmt.Sprintf("permission:%s", permissionID)
+	permissionJSON, err := RedisClient.Get(ctx, key).Result()
+	if err == redis.Nil {
+		logger.Debug("Permission not found in cache", zap.String("permissionID", permissionID))
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to get permission from cache: %w", err)
+	}
+
+	var permission model.Permission
+	err = json.Unmarshal([]byte(permissionJSON), &permission)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal permission: %w", err)
+	}
+
+	logger.Debug("Permission retrieved from cache", zap.String("permissionID", permissionID))
+	return &permission, nil
+}
+
 func RateLimit(ctx context.Context, key string, limit int, per time.Duration) (bool, error) {
 	pipe := RedisClient.Pipeline()
 	now := time.Now().UnixNano()

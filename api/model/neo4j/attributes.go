@@ -6,6 +6,18 @@ const (
 	// AttrName represents the name attribute of a node
 	AttrName = "name"
 
+	// AttrDescription represents the description attribute of a node
+	AttrDescription = "description"
+
+	// AttrID represents the unique identifier of a node
+	AttrID = "id"
+
+	// AttrParentID represents the parent identifier of a node
+	AttrParentID = "parentID"
+
+	// AttrOrganizationID represents the organization identifier of a node
+	AttrOrganizationID = "organizationID"
+
 	// AttrEmail represents the email attribute of a user
 	AttrEmail = "email"
 

@@ -6,8 +6,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
 	echo_errors "github.com/dev-mohitbeniwal/echo/api/errors"
+	logger "github.com/dev-mohitbeniwal/echo/api/logging"
 	"github.com/dev-mohitbeniwal/echo/api/model"
 	"github.com/dev-mohitbeniwal/echo/api/service"
 	"github.com/dev-mohitbeniwal/echo/api/util"
@@ -76,6 +78,9 @@ func (gc *GroupController) UpdateGroup(c *gin.Context) {
 		util.RespondWithError(c, http.StatusBadRequest, "Invalid group data", err)
 		return
 	}
+
+	logger.Info("Updating group", zap.String("group_id", groupID))
+
 	group.ID = groupID
 	updaterID, err := util.GetUserIDFromContext(c)
 	if err != nil {

@@ -73,17 +73,18 @@ func (dao *GroupDAO) CreateGroup(ctx context.Context, group model.Group) (string
         WITH g
         MATCH (o:` + echo_neo4j.LabelOrganization + ` {` + echo_neo4j.AttrID + `: $organizationID})
         MERGE (g)-[:` + echo_neo4j.RelPartOf + `]->(o)
-        RETURN g.` + echo_neo4j.AttrID + ` as id
         `
 
+		now := time.Now().Format(time.RFC3339)
 		params := map[string]interface{}{
 			echo_neo4j.AttrID: group.ID,
 			"organizationID":  group.OrganizationID,
 			"props": map[string]interface{}{
-				echo_neo4j.AttrName:        group.Name,
-				echo_neo4j.AttrDescription: group.Description,
-				echo_neo4j.AttrCreatedAt:   time.Now().Format(time.RFC3339),
-				echo_neo4j.AttrUpdatedAt:   time.Now().Format(time.RFC3339),
+				echo_neo4j.AttrName:           group.Name,
+				echo_neo4j.AttrDescription:    group.Description,
+				echo_neo4j.AttrOrganizationID: group.OrganizationID,
+				echo_neo4j.AttrCreatedAt:      now,
+				echo_neo4j.AttrUpdatedAt:      now,
 			},
 		}
 
@@ -94,11 +95,33 @@ func (dao *GroupDAO) CreateGroup(ctx context.Context, group model.Group) (string
             MERGE (g)-[:` + echo_neo4j.RelMemberOf + `]->(d)
             `
 			params["departmentID"] = group.DepartmentID
+			params["props"].(map[string]interface{})[echo_neo4j.AttrDepartmentID] = group.DepartmentID
 		}
+
+		if len(group.Roles) > 0 {
+			query += `
+            WITH g
+            UNWIND $roles AS roleID
+            MATCH (r:` + echo_neo4j.LabelRole + ` {` + echo_neo4j.AttrID + `: roleID})
+            MERGE (g)-[:` + echo_neo4j.RelHasRole + `]->(r)
+            `
+			params["roles"] = group.Roles
+			params["props"].(map[string]interface{})["roles"] = group.Roles
+		}
+
+		if len(group.Attributes) > 0 {
+			params["props"].(map[string]interface{})["attributes"] = group.Attributes
+		}
+
+		query += `
+        SET g += $props
+        RETURN g.` + echo_neo4j.AttrID + ` as id
+        `
 
 		result, err := tx.Run(query, params)
 		if err != nil {
-			return nil, fmt.Errorf("failed to execute create group query: %w", err)
+			logger.Error("Failed to execute create group query", zap.Error(err))
+			return nil, echo_errors.ErrDatabaseOperation
 		}
 
 		if result.Next() {
@@ -187,6 +210,37 @@ func (dao *GroupDAO) UpdateGroup(ctx context.Context, group model.Group) (*model
 			params["departmentID"] = group.DepartmentID
 		}
 
+		// Update Roles
+		query += `
+        WITH g
+        OPTIONAL MATCH (g)-[r:` + echo_neo4j.RelHasRole + `]->(:` + echo_neo4j.LabelRole + `)
+        DELETE r
+        WITH g
+        `
+		if len(group.Roles) > 0 {
+			query += `
+            UNWIND $roles AS roleID
+            MATCH (r:` + echo_neo4j.LabelRole + ` {` + echo_neo4j.AttrID + `: roleID})
+            MERGE (g)-[:` + echo_neo4j.RelHasRole + `]->(r)
+            WITH g
+            `
+			params["roles"] = group.Roles
+		}
+
+		// Update Attributes
+		if len(group.Attributes) > 0 {
+			query += `
+            SET g.attributes = $attributes
+            WITH g
+            `
+			params["attributes"] = group.Attributes
+		} else {
+			query += `
+            REMOVE g.attributes
+            WITH g
+            `
+		}
+
 		query += `
         RETURN g
         `
@@ -210,6 +264,7 @@ func (dao *GroupDAO) UpdateGroup(ctx context.Context, group model.Group) (*model
 
 	duration := time.Since(start)
 	if err != nil {
+		logger.Error("Failed to update group", zap.Error(err), zap.String(echo_neo4j.AttrID, group.ID), zap.Duration("duration", duration))
 		logger.Error("Failed to update group",
 			zap.Error(err),
 			zap.String(echo_neo4j.AttrID, group.ID),
@@ -294,7 +349,9 @@ func (dao *GroupDAO) GetGroup(ctx context.Context, groupID string) (*model.Group
 
 	query := `
     MATCH (g:` + echo_neo4j.LabelGroup + ` {id: $id})
-    RETURN g
+    OPTIONAL MATCH (g)-[:` + echo_neo4j.RelHasRole + `]->(r:` + echo_neo4j.LabelRole + `)
+    WITH g, COLLECT(r.id) AS roleIds
+    RETURN g, roleIds
     `
 	result, err := session.Run(query, map[string]interface{}{"id": groupID})
 	if err != nil {
@@ -306,7 +363,10 @@ func (dao *GroupDAO) GetGroup(ctx context.Context, groupID string) (*model.Group
 	}
 
 	if result.Next() {
-		node := result.Record().Values[0].(neo4j.Node)
+		record := result.Record()
+		node := record.Values[0].(neo4j.Node)
+		roleIds := record.Values[1].([]interface{})
+
 		group, err := mapNodeToGroup(node)
 		if err != nil {
 			logger.Error("Failed to map group node to struct",
@@ -315,6 +375,21 @@ func (dao *GroupDAO) GetGroup(ctx context.Context, groupID string) (*model.Group
 				zap.Duration("duration", time.Since(start)))
 			return nil, echo_errors.ErrInternalServer
 		}
+
+		// Add role IDs to the group
+		group.Roles = make([]string, len(roleIds))
+		for i, roleID := range roleIds {
+			group.Roles[i] = roleID.(string)
+		}
+
+		// Get attributes from the node
+		if attrs, exists := node.Props["attributes"].(map[string]interface{}); exists {
+			group.Attributes = make(map[string]string)
+			for k, v := range attrs {
+				group.Attributes[k] = fmt.Sprintf("%v", v)
+			}
+		}
+
 		logger.Info("Group retrieved successfully",
 			zap.String("groupID", groupID),
 			zap.Duration("duration", time.Since(start)))
@@ -336,7 +411,9 @@ func (dao *GroupDAO) ListGroups(ctx context.Context, limit int, offset int) ([]*
 
 	query := `
     MATCH (g:` + echo_neo4j.LabelGroup + `)
-    RETURN g
+    OPTIONAL MATCH (g)-[:` + echo_neo4j.RelHasRole + `]->(r:` + echo_neo4j.LabelRole + `)
+    WITH g, COLLECT(r.id) AS roleIds
+    RETURN g, roleIds
     ORDER BY g.createdAt DESC
     SKIP $offset
     LIMIT $limit
@@ -354,7 +431,10 @@ func (dao *GroupDAO) ListGroups(ctx context.Context, limit int, offset int) ([]*
 
 	var groups []*model.Group
 	for result.Next() {
-		node := result.Record().Values[0].(neo4j.Node)
+		record := result.Record()
+		node := record.Values[0].(neo4j.Node)
+		roleIds := record.Values[1].([]interface{})
+
 		group, err := mapNodeToGroup(node)
 		if err != nil {
 			logger.Error("Failed to map group node to struct",
@@ -362,6 +442,21 @@ func (dao *GroupDAO) ListGroups(ctx context.Context, limit int, offset int) ([]*
 				zap.Duration("duration", time.Since(start)))
 			return nil, echo_errors.ErrInternalServer
 		}
+
+		// Add role IDs to the group
+		group.Roles = make([]string, len(roleIds))
+		for i, roleID := range roleIds {
+			group.Roles[i] = roleID.(string)
+		}
+
+		// Get attributes from the node
+		if attrs, exists := node.Props["attributes"].(map[string]interface{}); exists {
+			group.Attributes = make(map[string]string)
+			for k, v := range attrs {
+				group.Attributes[k] = fmt.Sprintf("%v", v)
+			}
+		}
+
 		groups = append(groups, group)
 	}
 

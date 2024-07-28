@@ -69,32 +69,83 @@ func (dao *RoleDAO) CreateRole(ctx context.Context, role model.Role) (string, er
 	result, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
 			MERGE (r:` + echo_neo4j.LabelRole + ` {id: $id})
-			ON CREATE SET r += $props
+			ON CREATE SET 
+				r.name = $name,
+				r.description = $description,
+				r.organizationID = $organizationID,
+				r.createdAt = $createdAt,
+				r.updatedAt = $updatedAt
+		`
+
+		if role.DepartmentID != "" {
+			query += `
+				SET r.departmentID = $departmentID
+			`
+		}
+
+		if len(role.Attributes) > 0 {
+			query += `
+				SET r.attributes = $attributes
+			`
+		}
+
+		query += `
 			WITH r
 			MATCH (o:` + echo_neo4j.LabelOrganization + ` {id: $organizationID})
 			MERGE (r)-[:` + echo_neo4j.RelPartOf + `]->(o)
-			WITH r
-			OPTIONAL MATCH (d:` + echo_neo4j.LabelDepartment + ` {id: $departmentID})
-			FOREACH (_ IN CASE WHEN d IS NOT NULL THEN [1] ELSE [] END |
+		`
+
+		if role.DepartmentID != "" {
+			query += `
+				WITH r
+				MATCH (d:` + echo_neo4j.LabelDepartment + ` {id: $departmentID})
 				MERGE (r)-[:` + echo_neo4j.RelPartOf + `]->(d)
-			)
+			`
+		}
+
+		if len(role.Permissions) > 0 {
+			query += `
+				WITH r
+				UNWIND $permissions AS permissionID
+				MATCH (p:` + echo_neo4j.LabelPermission + ` {id: permissionID})
+				MERGE (r)-[:` + echo_neo4j.RelHasPermission + `]->(p)
+			`
+		}
+
+		query += `
 			RETURN r.id as id
 		`
 
+		now := time.Now().Format(time.RFC3339)
 		params := map[string]interface{}{
-			"id": role.ID,
-			"props": map[string]interface{}{
-				"name":           role.Name,
-				"description":    role.Description,
-				"organizationID": role.OrganizationID,
-				"departmentID":   role.DepartmentID,
-				"createdAt":      time.Now().Format(time.RFC3339),
-				"updatedAt":      time.Now().Format(time.RFC3339),
-			},
+			"id":             role.ID,
+			"name":           role.Name,
+			"description":    role.Description,
+			"organizationID": role.OrganizationID,
+			"createdAt":      now,
+			"updatedAt":      now,
 		}
+
+		if role.DepartmentID != "" {
+			params["departmentID"] = role.DepartmentID
+		}
+
+		if len(role.Attributes) > 0 {
+			params["attributes"] = role.Attributes
+		}
+
+		if len(role.Permissions) > 0 {
+			params["permissions"] = role.Permissions
+		}
+
+		// Log the query and parameters
+		logger.Debug("Create role query",
+			zap.String("query", query),
+			zap.Any("params", params))
 
 		result, err := transaction.Run(query, params)
 		if err != nil {
+			logger.Error("Failed to execute create role query", zap.Error(err))
 			return nil, echo_errors.ErrDatabaseOperation
 		}
 
@@ -166,8 +217,17 @@ func (dao *RoleDAO) UpdateRole(ctx context.Context, role model.Role) (*model.Rol
         FOREACH (_ IN CASE WHEN d IS NOT NULL THEN [1] ELSE [] END |
             MERGE (r)-[:` + echo_neo4j.RelPartOf + `]->(d)
         )
+        WITH r
+        OPTIONAL MATCH (r)-[oldPermRel:` + echo_neo4j.RelHasPermission + `]->(:` + echo_neo4j.LabelPermission + `)
+        DELETE oldPermRel
+        WITH r
+        UNWIND $permissions AS permissionID
+        MATCH (p:` + echo_neo4j.LabelPermission + ` {id: permissionID})
+        MERGE (r)-[:` + echo_neo4j.RelHasPermission + `]->(p)
         RETURN r
         `
+
+		attributesJSON, _ := json.Marshal(role.Attributes)
 
 		params := map[string]interface{}{
 			"id": role.ID,
@@ -176,14 +236,20 @@ func (dao *RoleDAO) UpdateRole(ctx context.Context, role model.Role) (*model.Rol
 				"description":            role.Description,
 				"organizationID":         role.OrganizationID,
 				"departmentID":           role.DepartmentID,
+				"attributes":             string(attributesJSON),
 				echo_neo4j.AttrUpdatedAt: time.Now().Format(time.RFC3339),
 			},
 			"organizationID": role.OrganizationID,
 			"departmentID":   role.DepartmentID,
+			"permissions":    role.Permissions,
 		}
+
+		logger.Debug("Update role query", zap.String("query", query), zap.Any("params", params))
 
 		result, err := transaction.Run(query, params)
 		if err != nil {
+			// Log the error
+			logger.Error("Failed to execute update role query", zap.Error(err))
 			return nil, echo_errors.ErrDatabaseOperation
 		}
 
@@ -193,6 +259,23 @@ func (dao *RoleDAO) UpdateRole(ctx context.Context, role model.Role) (*model.Rol
 			if err != nil {
 				return nil, fmt.Errorf("failed to map role node to struct: %w", err)
 			}
+
+			// Fetch permissions for the updated role
+			permissionsQuery := `
+			MATCH (r:` + echo_neo4j.LabelRole + ` {id: $id})-[:` + echo_neo4j.RelHasPermission + `]->(p:` + echo_neo4j.LabelPermission + `)
+			RETURN p.id
+			`
+			permissionsResult, err := transaction.Run(permissionsQuery, map[string]interface{}{"id": role.ID})
+			if err != nil {
+				return nil, fmt.Errorf("failed to fetch permissions: %w", err)
+			}
+
+			var permissions []string
+			for permissionsResult.Next() {
+				permissions = append(permissions, permissionsResult.Record().Values[0].(string))
+			}
+			updatedRole.Permissions = permissions
+
 			return nil, nil
 		}
 

@@ -33,7 +33,7 @@ func (uc *UserController) RegisterRoutes(r *gin.RouterGroup) {
 		users.DELETE("/:id", uc.DeleteUser)
 		users.GET("/:id", uc.GetUser)
 		users.GET("", uc.ListUsers)
-		users.GET("/search", uc.SearchUsers)
+		users.POST("/search", uc.SearchUsers)
 	}
 }
 
@@ -153,20 +153,14 @@ func (uc *UserController) ListUsers(c *gin.Context) {
 
 // SearchUsers endpoint
 func (uc *UserController) SearchUsers(c *gin.Context) {
-	query := c.Query("query")
+	var criteria model.UserSearchCriteria
 
-	limit, offset, err := helper_util.GetPaginationParams(c)
-	if err != nil {
-		util.RespondWithError(c, http.StatusBadRequest, "Invalid pagination parameters", err)
+	if err := c.ShouldBindJSON(&criteria); err != nil {
+		util.RespondWithError(c, http.StatusBadRequest, "Invalid search criteria", err)
 		return
 	}
 
-	if query == "" {
-		util.RespondWithError(c, http.StatusBadRequest, "Query parameter is required", nil)
-		return
-	}
-
-	users, err := uc.userService.SearchUsers(c, query, limit, offset)
+	users, err := uc.userService.SearchUsers(c, criteria)
 	if err != nil {
 		util.RespondWithError(c, http.StatusInternalServerError, "Failed to search users", err)
 		return

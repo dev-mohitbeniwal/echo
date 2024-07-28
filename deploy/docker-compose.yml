@@ -3,7 +3,9 @@ services:
   backend:
     build:
       context: ../api
-      dockerfile: ../deploy/Dockerfile
+      dockerfile: ../api/Dockerfile
+      args:
+        - BUILD_ENV=development
     ports:
       - "8080:8080"
     volumes:
@@ -17,7 +19,7 @@ services:
       - NEO4J_URI=bolt://neo4j:7687
       - REDIS_ADDR=redis:6379
       - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - LOG_LEVEL=info
+      - LOG_LEVEL=debug
     networks:
       - echo-network
 
@@ -77,6 +79,46 @@ services:
     networks:
       - echo-network
 
+  loki:
+    image: grafana/loki:latest
+    user: "0"
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml -config.expand-env=true
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml
+      - ./scrape-config.yaml:/etc/loki/scrape-config.yaml
+      - loki-data:/loki
+    environment:
+      - LOKI_CONFIG_DIR=/etc/loki
+    networks:
+      - echo-network
+
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - ./promtail-config.yaml:/etc/promtail/config.yaml
+      - ../api:/app
+    command: -config.file=/etc/promtail/config.yaml
+    depends_on:
+      - loki
+    networks:
+      - echo-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    depends_on:
+      - loki
+    networks:
+      - echo-network
+
 networks:
   echo-network:
     driver: bridge
@@ -86,3 +128,6 @@ volumes:
   redisdata:
   esdata:
   logvolume:
+  grafana-storage:
+  promtail_data:
+  loki-data:

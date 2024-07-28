@@ -23,7 +23,7 @@ type IUserService interface {
 	DeleteUser(ctx context.Context, userID string, deleterID string) error
 	GetUser(ctx context.Context, userID string) (*model.User, error)
 	ListUsers(ctx context.Context, limit int, offset int) ([]*model.User, error)
-	SearchUsers(ctx context.Context, query string, limit, offset int) ([]*model.User, error)
+	SearchUsers(ctx context.Context, criteria model.UserSearchCriteria) ([]*model.User, error)
 }
 
 // UserService handles business logic for user operations
@@ -262,11 +262,27 @@ func (s *UserService) ListUsers(ctx context.Context, limit int, offset int) ([]*
 }
 
 // SearchUsers searches for users based on a query string
-func (s *UserService) SearchUsers(ctx context.Context, query string, limit, offset int) ([]*model.User, error) {
-	// Implement user search logic here
-	// This might involve searching by username, email, or other attributes
-	// You may need to add a corresponding method in the UserDAO
-	return nil, fmt.Errorf("user search not implemented")
+func (s *UserService) SearchUsers(ctx context.Context, criteria model.UserSearchCriteria) ([]*model.User, error) {
+	logger.Info("Searching users", zap.Any("criteria", criteria))
+
+	if criteria.Limit < 1 {
+		criteria.Limit = 10 // or any other default value
+	}
+
+	if criteria.Offset < 0 {
+		criteria.Offset = 0
+	}
+
+	users, err := s.userDAO.SearchUsers(ctx, criteria)
+	if err != nil {
+		logger.Error("Error searching users",
+			zap.Error(err),
+			zap.Any("criteria", criteria))
+		return nil, fmt.Errorf("failed to search users: %w", err)
+	}
+
+	logger.Info("Users search completed", zap.Int("userCount", len(users)))
+	return users, nil
 }
 
 // Helper methods

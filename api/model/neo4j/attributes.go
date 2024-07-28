@@ -18,6 +18,9 @@ const (
 	// AttrOrganizationID represents the organization identifier of a node
 	AttrOrganizationID = "organizationID"
 
+	// AttrDepartmentID represents the department identifier of a node
+	AttrDepartmentID = "departmentID"
+
 	// AttrEmail represents the email attribute of a user
 	AttrEmail = "email"
 

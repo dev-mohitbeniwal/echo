@@ -19,7 +19,7 @@ const (
 	RelHasRole = "HAS_ROLE"
 
 	// RelHasPermission represents the relationship between a role and its permissions
-	RelHasPermission = "HAS_` + echo_neo4j.LabelPermission + `"
+	RelHasPermission = "HAS_PERMISSION"
 
 	// RelOwns represents the relationship between an organization and its resources
 	RelOwns = "OWNS"

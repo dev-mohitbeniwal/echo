@@ -4,6 +4,7 @@ package model
 import "time"
 
 type User struct {
+	Identity       string            `json:"identity,omitempty"` // Unique identifier for the user
 	ID             string            `json:"id"`
 	Name           string            `json:"name"`
 	Username       string            `json:"username"`

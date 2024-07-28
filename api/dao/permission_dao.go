@@ -132,7 +132,9 @@ func (dao *PermissionDAO) UpdatePermission(ctx context.Context, permission model
 	var updatedPermission *model.Permission
 	oldPermission, err := dao.GetPermission(ctx, permission.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get permission: %w", err)
+		// Log the error
+		logger.Error("Failed to retrieve permission for update", zap.Error(err))
+		return nil, echo_errors.ErrPermissionNotFound
 	}
 
 	_, err = session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
@@ -153,6 +155,8 @@ func (dao *PermissionDAO) UpdatePermission(ctx context.Context, permission model
 
 		result, err := transaction.Run(query, params)
 		if err != nil {
+			// Log the error
+			logger.Error("Failed to execute update permission query", zap.Error(err))
 			return nil, echo_errors.ErrDatabaseOperation
 		}
 

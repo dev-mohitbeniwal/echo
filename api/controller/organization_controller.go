@@ -33,7 +33,7 @@ func (oc *OrganizationController) RegisterRoutes(r *gin.RouterGroup) {
 		organizations.DELETE("/:id", oc.DeleteOrganization)
 		organizations.GET("/:id", oc.GetOrganization)
 		organizations.GET("", oc.ListOrganizations)
-		organizations.GET("/search", oc.SearchOrganizations)
+		organizations.POST("/search", oc.SearchOrganizations)
 	}
 }
 
@@ -151,7 +151,6 @@ func (oc *OrganizationController) ListOrganizations(c *gin.Context) {
 	c.JSON(http.StatusOK, orgs)
 }
 
-// SearchOrganizations endpoint
 // SearchOrganizations endpoint
 func (oc *OrganizationController) SearchOrganizations(c *gin.Context) {
 	var criteria model.OrganizationSearchCriteria

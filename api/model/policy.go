@@ -6,24 +6,26 @@ import (
 )
 
 type Policy struct {
-	ID                string      `json:"id"`
-	Name              string      `json:"name"`
-	Description       string      `json:"description"`
-	Effect            string      `json:"effect"` // "allow" or "deny"
-	Subjects          []Subject   `json:"subjects"`
-	ResourceTypes     []string    `json:"resource_types"`
-	AttributeGroups   []string    `json:"attribute_groups"`
-	Actions           []string    `json:"actions"`
-	Conditions        []Condition `json:"conditions"`
-	DynamicAttributes []string    `json:"dynamic_attributes,omitempty"`
-	Priority          int         `json:"priority"`
-	Version           int         `json:"version"`
-	ParentPolicyID    string      `json:"parent_policy_id,omitempty"`
-	CreatedAt         time.Time   `json:"created_at"`
-	UpdatedAt         time.Time   `json:"updated_at"`
-	Active            bool        `json:"active"`
-	ActivationDate    *time.Time  `json:"activation_date,omitempty"`
-	DeactivationDate  *time.Time  `json:"deactivation_date,omitempty"`
+	ID                string            `json:"id"`
+	Name              string            `json:"name"`
+	Description       string            `json:"description"`
+	Effect            string            `json:"effect"` // "allow" or "deny"
+	Subjects          []Subject         `json:"subjects"`
+	ResourceTypes     []string          `json:"resource_types"`
+	AttributeGroups   []string          `json:"attribute_groups"`
+	Actions           []string          `json:"actions"`
+	Conditions        []Condition       `json:"conditions"`
+	DynamicAttributes []string          `json:"dynamic_attributes,omitempty"`
+	Obligations       []Obligation      `json:"obligations,omitempty"`
+	Advice            map[string]string `json:"advice,omitempty"` // Advice provides supplementary information to the PEP which may or may not be acted upon.
+	Priority          int               `json:"priority"`
+	Version           int               `json:"version"`
+	ParentPolicyID    string            `json:"parent_policy_id,omitempty"`
+	CreatedAt         time.Time         `json:"created_at"`
+	UpdatedAt         time.Time         `json:"updated_at"`
+	Active            bool              `json:"active"`
+	ActivationDate    *time.Time        `json:"activation_date,omitempty"`
+	DeactivationDate  *time.Time        `json:"deactivation_date,omitempty"`
 }
 
 type Subject struct {
@@ -91,4 +93,12 @@ type PolicyUsageAnalysis struct {
 	ConditionCount int
 	CreatedAt      time.Time
 	LastUpdatedAt  time.Time
+}
+
+// Obligation is action that must be carried out by the Policy Enforcement Point
+// (PEP) in conjunction with enforcing the authorization decision.
+type Obligation struct {
+	Type       string      `json:"type"`
+	Action     string      `json:"action"`
+	Parameters interface{} `json:"parameters,omitempty"`
 }

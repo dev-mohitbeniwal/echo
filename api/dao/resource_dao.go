@@ -70,41 +70,41 @@ func (dao *ResourceDAO) CreateResource(ctx context.Context, resource model.Resou
 
 	result, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-            CREATE (r:RESOURCE {id: $id})
+            CREATE (r:` + echo_neo4j.LabelResource + ` {id: $id})
             SET r += $props
             WITH r
-            MATCH (o:ORGANIZATION {id: $organizationID})
-            CREATE (r)-[:BELONGS_TO]->(o)
+            MATCH (o:` + echo_neo4j.LabelOrganization + ` {id: $organizationID})
+            CREATE (r)-[:` + echo_neo4j.RelBelongsToOrg + `]->(o)
             WITH r
-            OPTIONAL MATCH (d:DEPARTMENT {id: $departmentID})
+            OPTIONAL MATCH (d:` + echo_neo4j.LabelDepartment + ` {id: $departmentID})
             FOREACH (_ IN CASE WHEN d IS NOT NULL THEN [1] ELSE [] END |
-                CREATE (r)-[:ASSIGNED_TO]->(d)
+                CREATE (r)-[:` + echo_neo4j.RelBelongsToDept + `]->(d)
             )
             WITH r
-            MATCH (u:USER {id: $ownerID})
-            CREATE (r)-[:OWNED_BY]->(u)
+            MATCH (u:` + echo_neo4j.LabelUser + ` {id: $ownerID})
+            CREATE (r)-[:` + echo_neo4j.RelOwnedBy + `]->(u)
             WITH r
-            MATCH (rt:RESOURCE_TYPE {id: $typeID})
-            CREATE (r)-[:HAS_TYPE]->(rt)
+            MATCH (rt:` + echo_neo4j.LabelResourceType + ` {id: $typeID})
+            CREATE (r)-[:` + echo_neo4j.RelHasType + `]->(rt)
             WITH r
-            MATCH (ag:ATTRIBUTE_GROUP {id: $attributeGroupID})
-            CREATE (r)-[:IN_GROUP]->(ag)
+            MATCH (ag:` + echo_neo4j.LabelAttributeGroup + ` {id: $attributeGroupID})
+            CREATE (r)-[:` + echo_neo4j.RelInAttributeGroup + `]->(ag)
         `
 
 		// Add relationships for parent and related resources
 		if resource.ParentID != "" {
 			query += `
                 WITH r
-                MATCH (p:RESOURCE {id: $parentID})
-                CREATE (r)-[:CHILD_OF]->(p)
+                MATCH (p:` + echo_neo4j.LabelResource + ` {id: $parentID})
+                CREATE (r)-[:` + echo_neo4j.RelChildOf + `]->(p)
             `
 		}
 		if len(resource.RelatedIDs) > 0 {
 			query += `
                 WITH r
                 UNWIND $relatedIDs AS relatedID
-                MATCH (related:RESOURCE {id: relatedID})
-                CREATE (r)-[:RELATED_TO]->(related)
+                MATCH (related:` + echo_neo4j.LabelResource + ` {id: relatedID})
+                CREATE (r)-[:` + echo_neo4j.RelRelatedTo + `]->(related)
             `
 		}
 
@@ -257,60 +257,60 @@ func (dao *ResourceDAO) UpdateResource(ctx context.Context, resource model.Resou
         MATCH (r:` + echo_neo4j.LabelResource + ` {id: $id})
         SET r += $props
         WITH r
-        OPTIONAL MATCH (r)-[oldOrgRel:BELONGS_TO]->(:` + echo_neo4j.LabelOrganization + `)
+        OPTIONAL MATCH (r)-[oldOrgRel:` + echo_neo4j.RelBelongsToOrg + `]->(:` + echo_neo4j.LabelOrganization + `)
         DELETE oldOrgRel
         WITH r
         MATCH (o:` + echo_neo4j.LabelOrganization + ` {id: $organizationID})
-        CREATE (r)-[:BELONGS_TO]->(o)
+        CREATE (r)-[:` + echo_neo4j.RelBelongsToOrg + `]->(o)
         WITH r
-        OPTIONAL MATCH (r)-[oldDeptRel:ASSIGNED_TO]->(:` + echo_neo4j.LabelDepartment + `)
+        OPTIONAL MATCH (r)-[oldDeptRel:` + echo_neo4j.RelBelongsToDept + `]->(:` + echo_neo4j.LabelDepartment + `)
         DELETE oldDeptRel
         WITH r
         OPTIONAL MATCH (d:` + echo_neo4j.LabelDepartment + ` {id: $departmentID})
         FOREACH (_ IN CASE WHEN d IS NOT NULL THEN [1] ELSE [] END |
-            CREATE (r)-[:ASSIGNED_TO]->(d)
+            CREATE (r)-[:` + echo_neo4j.RelBelongsToDept + `]->(d)
         )
         WITH r
-        OPTIONAL MATCH (r)-[oldOwnerRel:OWNED_BY]->(:` + echo_neo4j.LabelUser + `)
+        OPTIONAL MATCH (r)-[oldOwnerRel:` + echo_neo4j.RelOwnedBy + `]->(:` + echo_neo4j.LabelUser + `)
         DELETE oldOwnerRel
         WITH r
         MATCH (u:` + echo_neo4j.LabelUser + ` {id: $ownerID})
-        CREATE (r)-[:OWNED_BY]->(u)
+        CREATE (r)-[:` + echo_neo4j.RelOwnedBy + `]->(u)
         WITH r
-        OPTIONAL MATCH (r)-[oldTypeRel:HAS_TYPE]->(:` + echo_neo4j.LabelResourceType + `)
+        OPTIONAL MATCH (r)-[oldTypeRel:` + echo_neo4j.RelHasType + `]->(:` + echo_neo4j.LabelResourceType + `)
         DELETE oldTypeRel
         WITH r
         MATCH (rt:` + echo_neo4j.LabelResourceType + ` {id: $typeID})
-        CREATE (r)-[:HAS_TYPE]->(rt)
+        CREATE (r)-[:` + echo_neo4j.RelHasType + `]->(rt)
         WITH r
-        OPTIONAL MATCH (r)-[oldGroupRel:IN_GROUP]->(:` + echo_neo4j.LabelAttributeGroup + `)
+        OPTIONAL MATCH (r)-[oldGroupRel:` + echo_neo4j.RelInAttributeGroup + `]->(:` + echo_neo4j.LabelAttributeGroup + `)
         DELETE oldGroupRel
         WITH r
         MATCH (ag:` + echo_neo4j.LabelAttributeGroup + ` {id: $attributeGroupID})
-        CREATE (r)-[:IN_GROUP]->(ag)
+        CREATE (r)-[:` + echo_neo4j.RelInAttributeGroup + `]->(ag)
         `
 
 		// Update parent relationship
 		query += `
         WITH r
-        OPTIONAL MATCH (r)-[oldParentRel:CHILD_OF]->(:` + echo_neo4j.LabelResource + `)
+        OPTIONAL MATCH (r)-[oldParentRel:` + echo_neo4j.RelChildOf + `]->(:` + echo_neo4j.LabelResource + `)
         DELETE oldParentRel
         WITH r
         OPTIONAL MATCH (p:` + echo_neo4j.LabelResource + ` {id: $parentID})
         FOREACH (_ IN CASE WHEN p IS NOT NULL THEN [1] ELSE [] END |
-            CREATE (r)-[:CHILD_OF]->(p)
+            CREATE (r)-[:` + echo_neo4j.RelChildOf + `]->(p)
         )
         `
 
 		// Update related resources
 		query += `
         WITH r
-        OPTIONAL MATCH (r)-[oldRelatedRel:RELATED_TO]->(:` + echo_neo4j.LabelResource + `)
+        OPTIONAL MATCH (r)-[oldRelatedRel:` + echo_neo4j.RelRelatedTo + `]->(:` + echo_neo4j.LabelResource + `)
         DELETE oldRelatedRel
         WITH r
         UNWIND $relatedIDs AS relatedID
         MATCH (related:` + echo_neo4j.LabelResource + ` {id: relatedID})
-        CREATE (r)-[:RELATED_TO]->(related)
+        CREATE (r)-[:` + echo_neo4j.RelRelatedTo + `]->(related)
         `
 
 		query += `

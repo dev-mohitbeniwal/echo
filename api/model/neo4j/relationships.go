@@ -38,11 +38,28 @@ const (
 	// RelBelongsToGroup represents the relationship between a user and their groups
 	RelBelongsToGroup = "BELONGS_TO_GROUP"
 
+	// RelHasType represents the relationship between a resource and its type
+	RelHasType = "HAS_TYPE"
 	// RelCreatedBy represents the relationship between a node and its creator
 	RelCreatedBy = "CREATED_BY"
 
 	// RelUpdatedBy represents the relationship between a node and its last updater
 	RelUpdatedBy = "UPDATED_BY"
+
+	// RelBelongsToOrg represents the relationship between a user and their organization
+	RelBelongsToOrg = "BELONGS_TO_ORG"
+
+	// RelRelatedTo represents the relationship between resource and related to resource
+	RelRelatedTo = "RELATED_TO"
+
+	// RelBelongsToDept represents the relationship between a user and their department
+	RelBelongsToDept = "BELONGS_TO_DEPT"
+
+	// RelOwnedBy represents the relationship between a resource and its owner
+	RelOwnedBy = "OWNED_BY"
+
+	// RelInAttributeGroup represents the relationship between an resource and its attribute group
+	RelInAttributeGroup = "IN_ATTRIBUTE_GROUP"
 
 	// New relationships for resources
 	RelDerivedFrom   = "DERIVED_FROM"   // Represents a resource derived from another resource

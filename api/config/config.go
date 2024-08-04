@@ -3,6 +3,7 @@ package config
 
 import (
 	"log"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -51,6 +52,7 @@ func InitConfig() error {
 	viper.SetDefault("redis.addr", "localhost:6379")
 	viper.SetDefault("elasticsearch.url", "http://localhost:9200")
 	viper.SetDefault("redis.defaultCacheTTL", "10m")
+	viper.SetDefault("log.file", "logging/api.log")
 
 	// Attempt to read the config file
 	if err := viper.ReadInConfig(); err != nil {
@@ -93,4 +95,8 @@ func GetBool(key string) bool {
 // GetFloat64 retrieves a float64 value from the configuration
 func GetFloat64(key string) float64 {
 	return viper.GetFloat64(key)
+}
+
+func GetDuration(key string) time.Duration {
+	return viper.GetDuration(key)
 }

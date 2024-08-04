@@ -4,6 +4,7 @@ package util
 
 import (
 	"os"
+	"path/filepath"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -11,8 +12,14 @@ import (
 
 var Log *zap.Logger
 
-func InitLogger() {
+func InitLogger(logDirPath string) {
 	config := zap.NewProductionConfig()
+
+	// Ensure log directory exists
+	err := os.MkdirAll(logDirPath, 0755)
+	if err != nil {
+		panic(err)
+	}
 
 	// Customize log level based on environment
 	logLevel := os.Getenv("LOG_LEVEL")
@@ -23,9 +30,12 @@ func InitLogger() {
 		}
 	}
 
+	logFilePath := filepath.Join(logDirPath, "api.log")
+	logErrorFilePath := filepath.Join(logDirPath, "api_error.log")
+
 	// Customize output paths
-	config.OutputPaths = []string{"stdout", "/var/log/echo/app.log"}
-	config.ErrorOutputPaths = []string{"stderr", "/var/log/echo/error.log"}
+	config.OutputPaths = []string{"stdout", logFilePath}
+	config.ErrorOutputPaths = []string{"stderr", logErrorFilePath}
 
 	// Add caller and stack trace to log output
 	config.EncoderConfig.CallerKey = "caller"
@@ -35,7 +45,6 @@ func InitLogger() {
 	config.EncoderConfig.TimeKey = "timestamp"
 	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 
-	var err error
 	Log, err = config.Build(zap.AddCallerSkip(1))
 	if err != nil {
 		panic(err)

@@ -30,12 +30,19 @@ func RateLimiter(limit int, per time.Duration) gin.HandlerFunc {
 		c.Header("X-RateLimit-Duration", per.String())
 
 		if !allowed {
-			logger.Warn("Rate limit exceeded", zap.String("ip", key))
+			logger.Warn("Rate limit exceeded",
+				zap.String("ip", key),
+				zap.Int("limit", limit),
+				zap.Duration("per", per))
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Rate limit exceeded"})
 			c.Abort()
 			return
 		}
 
+		logger.Info("Request allowed",
+			zap.String("ip", key),
+			zap.Int("limit", limit),
+			zap.Duration("per", per))
 		c.Next()
 	}
 }

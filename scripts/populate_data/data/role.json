@@ -1,0 +1,483 @@
+[
+  {
+    "id": "role1",
+    "name": "System Administrator",
+    "description": "Full system access for IT management",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "permissions": [
+      "perm_create",
+      "perm_read",
+      "perm_update",
+      "perm_delete",
+      "perm_execute",
+      "perm_manage",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_invite",
+      "perm_assign_role",
+      "perm_revoke_role",
+      "perm_create_policy",
+      "perm_modify_policy",
+      "perm_approve",
+      "perm_reject",
+      "perm_audit",
+      "perm_view_logs",
+      "perm_create_tenant",
+      "perm_manage_tenant",
+      "perm_access_confidential",
+      "perm_export",
+      "perm_import",
+      "perm_access_during_business_hours",
+      "perm_access_from_approved_location",
+      "perm_use_advanced_features",
+      "perm_access_beta_features"
+    ],
+    "attributes": {
+      "access_level": "high"
+    }
+  },
+  {
+    "id": "role2",
+    "name": "HR Manager",
+    "description": "Human Resources management access",
+    "organization_id": "org1",
+    "department_id": "dept2",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_delete",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_invite",
+      "perm_approve",
+      "perm_reject",
+      "perm_export",
+      "perm_import",
+      "perm_access_confidential",
+      "perm_access_during_business_hours"
+    ],
+    "attributes": {
+      "access_level": "high"
+    }
+  },
+  {
+    "id": "role3",
+    "name": "Software Developer",
+    "description": "Access for software development tasks",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_delete",
+      "perm_execute",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_access_during_business_hours",
+      "perm_use_advanced_features"
+    ],
+    "attributes": {
+      "access_level": "medium"
+    }
+  },
+  {
+    "id": "role4",
+    "name": "Financial Analyst",
+    "description": "Access for financial analysis and reporting",
+    "organization_id": "org1",
+    "department_id": "dept3",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_list",
+      "perm_search",
+      "perm_export",
+      "perm_import",
+      "perm_access_confidential",
+      "perm_access_during_business_hours"
+    ],
+    "attributes": {
+      "access_level": "medium"
+    }
+  },
+  {
+    "id": "role5",
+    "name": "Customer Support Representative",
+    "description": "Access for customer support tasks",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "permissions": [
+      "perm_read",
+      "perm_update",
+      "perm_list",
+      "perm_search",
+      "perm_access_during_business_hours"
+    ],
+    "attributes": {
+      "access_level": "low"
+    }
+  },
+  {
+    "id": "role6",
+    "name": "Sales Manager",
+    "description": "Access for sales management",
+    "organization_id": "org1",
+    "department_id": "dept3",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_export",
+      "perm_access_during_business_hours",
+      "perm_approve",
+      "perm_reject"
+    ],
+    "attributes": {
+      "access_level": "high"
+    }
+  },
+  {
+    "id": "role7",
+    "name": "Marketing Specialist",
+    "description": "Access for marketing tasks",
+    "organization_id": "org1",
+    "department_id": "dept3",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_export",
+      "perm_access_during_business_hours"
+    ],
+    "attributes": {
+      "access_level": "medium"
+    }
+  },
+  {
+    "id": "role8",
+    "name": "Product Manager",
+    "description": "Access for product management",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_delete",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_export",
+      "perm_access_during_business_hours",
+      "perm_approve",
+      "perm_reject",
+      "perm_use_advanced_features"
+    ],
+    "attributes": {
+      "access_level": "high"
+    }
+  },
+  {
+    "id": "role9",
+    "name": "Quality Assurance Tester",
+    "description": "Access for QA testing",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_list",
+      "perm_search",
+      "perm_execute",
+      "perm_access_during_business_hours",
+      "perm_use_advanced_features"
+    ],
+    "attributes": {
+      "access_level": "medium"
+    }
+  },
+  {
+    "id": "role10",
+    "name": "Legal Counsel",
+    "description": "Access for legal department",
+    "organization_id": "org1",
+    "department_id": "dept2",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_delete",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_export",
+      "perm_access_confidential",
+      "perm_access_during_business_hours",
+      "perm_approve",
+      "perm_reject"
+    ],
+    "attributes": {
+      "access_level": "high"
+    }
+  },
+  {
+    "id": "role11",
+    "name": "Chief Executive Officer",
+    "description": "Highest level access for CEO",
+    "organization_id": "org1",
+    "department_id": null,
+    "permissions": [
+      "perm_create",
+      "perm_read",
+      "perm_update",
+      "perm_delete",
+      "perm_execute",
+      "perm_manage",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_invite",
+      "perm_assign_role",
+      "perm_revoke_role",
+      "perm_create_policy",
+      "perm_modify_policy",
+      "perm_approve",
+      "perm_reject",
+      "perm_audit",
+      "perm_view_logs",
+      "perm_create_tenant",
+      "perm_manage_tenant",
+      "perm_access_confidential",
+      "perm_export",
+      "perm_import",
+      "perm_access_during_business_hours",
+      "perm_access_from_approved_location",
+      "perm_use_advanced_features",
+      "perm_access_beta_features"
+    ],
+    "attributes": {
+      "access_level": "highest"
+    }
+  },
+  {
+    "id": "role12",
+    "name": "Data Scientist",
+    "description": "Access for data analysis and machine learning tasks",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_delete",
+      "perm_execute",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_export",
+      "perm_import",
+      "perm_access_confidential",
+      "perm_access_during_business_hours",
+      "perm_use_advanced_features"
+    ],
+    "attributes": {
+      "access_level": "high"
+    }
+  },
+  {
+    "id": "role13",
+    "name": "Doctor",
+    "description": "Medical staff access",
+    "organization_id": "org2",
+    "department_id": "dept4",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_access_confidential",
+      "perm_access_during_business_hours"
+    ],
+    "attributes": {
+      "access_level": "high"
+    }
+  },
+  {
+    "id": "role14",
+    "name": "Nurse",
+    "description": "Nursing staff access",
+    "organization_id": "org2",
+    "department_id": "dept4",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_list",
+      "perm_search",
+      "perm_access_confidential",
+      "perm_access_during_business_hours"
+    ],
+    "attributes": {
+      "access_level": "medium"
+    }
+  },
+  {
+    "id": "role15",
+    "name": "Radiologist",
+    "description": "Access for radiology department",
+    "organization_id": "org2",
+    "department_id": "dept5",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_access_confidential",
+      "perm_access_during_business_hours",
+      "perm_use_advanced_features"
+    ],
+    "attributes": {
+      "access_level": "high"
+    }
+  },
+  {
+    "id": "role16",
+    "name": "Hospital Administrator",
+    "description": "Administrative access for hospital management",
+    "organization_id": "org2",
+    "department_id": null,
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_delete",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_invite",
+      "perm_assign_role",
+      "perm_revoke_role",
+      "perm_approve",
+      "perm_reject",
+      "perm_audit",
+      "perm_view_logs",
+      "perm_access_confidential",
+      "perm_export",
+      "perm_import",
+      "perm_access_during_business_hours",
+      "perm_manage"
+    ],
+    "attributes": {
+      "access_level": "highest"
+    }
+  },
+  {
+    "id": "role17",
+    "name": "Researcher",
+    "description": "R&D access",
+    "organization_id": "org3",
+    "department_id": "dept6",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_delete",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_access_confidential",
+      "perm_access_during_business_hours",
+      "perm_use_advanced_features"
+    ],
+    "attributes": {
+      "access_level": "medium"
+    }
+  },
+  {
+    "id": "role18",
+    "name": "Senior Researcher",
+    "description": "Senior R&D access",
+    "organization_id": "org3",
+    "department_id": "dept6",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_delete",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_approve",
+      "perm_reject",
+      "perm_access_confidential",
+      "perm_access_during_business_hours",
+      "perm_use_advanced_features",
+      "perm_export",
+      "perm_import"
+    ],
+    "attributes": {
+      "access_level": "high"
+    }
+  },
+  {
+    "id": "role19",
+    "name": "Operations Manager",
+    "description": "Access for operations management",
+    "organization_id": "org3",
+    "department_id": "dept7",
+    "permissions": [
+      "perm_read",
+      "perm_create",
+      "perm_update",
+      "perm_delete",
+      "perm_list",
+      "perm_search",
+      "perm_share",
+      "perm_approve",
+      "perm_reject",
+      "perm_access_during_business_hours",
+      "perm_manage",
+      "perm_export",
+      "perm_import"
+    ],
+    "attributes": {
+      "access_level": "high"
+    }
+  },
+  {
+    "id": "role20",
+    "name": "Maintenance Technician",
+    "description": "Access for maintenance tasks",
+    "organization_id": "org3",
+    "department_id": "dept7",
+    "permissions": [
+      "perm_read",
+      "perm_update",
+      "perm_list",
+      "perm_search",
+      "perm_access_during_business_hours",
+      "perm_execute"
+    ],
+    "attributes": {
+      "access_level": "low"
+    }
+  }
+]

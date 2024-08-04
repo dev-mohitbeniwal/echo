@@ -1,0 +1,44 @@
+[
+  {
+    "id": "dept1",
+    "name": "IT Department",
+    "organization_id": "org1",
+    "parent_id": null
+  },
+  {
+    "id": "dept2",
+    "name": "HR Department",
+    "organization_id": "org1",
+    "parent_id": null
+  },
+  {
+    "id": "dept3",
+    "name": "Finance Department",
+    "organization_id": "org1",
+    "parent_id": null
+  },
+  {
+    "id": "dept4",
+    "name": "Emergency Room",
+    "organization_id": "org2",
+    "parent_id": null
+  },
+  {
+    "id": "dept5",
+    "name": "Radiology",
+    "organization_id": "org2",
+    "parent_id": null
+  },
+  {
+    "id": "dept6",
+    "name": "Research and Development",
+    "organization_id": "org3",
+    "parent_id": null
+  },
+  {
+    "id": "dept7",
+    "name": "Operations",
+    "organization_id": "org3",
+    "parent_id": null
+  }
+]

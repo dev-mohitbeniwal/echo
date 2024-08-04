@@ -16,6 +16,7 @@ import (
 	echo_errors "github.com/dev-mohitbeniwal/echo/api/errors"
 	logger "github.com/dev-mohitbeniwal/echo/api/logging"
 	"github.com/dev-mohitbeniwal/echo/api/model"
+	echo_neo4j "github.com/dev-mohitbeniwal/echo/api/model/neo4j"
 )
 
 type PolicyDAO struct {
@@ -46,7 +47,7 @@ func (dao *PolicyDAO) EnsureUniqueConstraint(ctx context.Context) error {
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
         CREATE CONSTRAINT unique_policy_id IF NOT EXISTS
-        FOR (p:Policy) REQUIRE p.id IS UNIQUE
+        FOR (p:` + echo_neo4j.LabelPolicy + `) REQUIRE p.id IS UNIQUE
         `
 		_, err := transaction.Run(query, nil)
 		if err != nil {
@@ -78,7 +79,7 @@ func (dao *PolicyDAO) CreatePolicy(ctx context.Context, policy model.Policy, use
 	result, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		// First, check if the policy already exists
 		checkQuery := `
-        MATCH (p:Policy {id: $id})
+        MATCH (p:` + echo_neo4j.LabelPolicy + ` {id: $id})
         RETURN p.id
         `
 		checkResult, err := transaction.Run(checkQuery, map[string]interface{}{"id": policy.ID})
@@ -90,51 +91,101 @@ func (dao *PolicyDAO) CreatePolicy(ctx context.Context, policy model.Policy, use
 		}
 
 		// If we get here, the policy doesn't exist, so create it
-		// If we get here, the policy doesn't exist, so create it
 		createQuery := `
-            MERGE (p:Policy {id: $id})
+            MERGE (p:` + echo_neo4j.LabelPolicy + ` {id: $id})
             ON CREATE SET p += $props
             ON MATCH SET p += $props
             RETURN p.id as id
         `
 
-		// Convert subjects, resources, actions, and conditions to JSON strings
+		// Convert subjects, resourceTypes, attributeGroups, actions, conditions, and dynamicAttributes to JSON strings
 		subjectsJSON, _ := json.Marshal(policy.Subjects)
-		resourcesJSON, _ := json.Marshal(policy.Resources)
+		resourceTypesJSON, _ := json.Marshal(policy.ResourceTypes)
+		attributeGroupsJSON, _ := json.Marshal(policy.AttributeGroups)
 		actionsJSON, _ := json.Marshal(policy.Actions)
 		conditionsJSON, _ := json.Marshal(policy.Conditions)
+		dynamicAttributesJSON, _ := json.Marshal(policy.DynamicAttributes)
 
 		parameters := map[string]interface{}{
 			"id": policy.ID,
 			"props": map[string]interface{}{
-				"name":             policy.Name,
-				"description":      policy.Description,
-				"effect":           policy.Effect,
-				"priority":         policy.Priority,
-				"version":          policy.Version,
-				"createdAt":        time.Now().Format(time.RFC3339),
-				"updatedAt":        time.Now().Format(time.RFC3339),
-				"active":           policy.Active,
-				"activationDate":   formatNullableTime(policy.ActivationDate),
-				"deactivationDate": formatNullableTime(policy.DeactivationDate),
-				"subjects":         string(subjectsJSON),
-				"resources":        string(resourcesJSON),
-				"actions":          string(actionsJSON),
-				"conditions":       string(conditionsJSON),
+				"name":              policy.Name,
+				"description":       policy.Description,
+				"effect":            policy.Effect,
+				"priority":          policy.Priority,
+				"version":           policy.Version,
+				"parentPolicyID":    policy.ParentPolicyID,
+				"createdAt":         policy.CreatedAt.Format(time.RFC3339),
+				"updatedAt":         policy.UpdatedAt.Format(time.RFC3339),
+				"active":            policy.Active,
+				"activationDate":    formatNullableTime(policy.ActivationDate),
+				"deactivationDate":  formatNullableTime(policy.DeactivationDate),
+				"subjects":          string(subjectsJSON),
+				"resourceTypes":     string(resourceTypesJSON),
+				"attributeGroups":   string(attributeGroupsJSON),
+				"actions":           string(actionsJSON),
+				"conditions":        string(conditionsJSON),
+				"dynamicAttributes": string(dynamicAttributesJSON),
 			},
 		}
 		createResult, err := transaction.Run(createQuery, parameters)
 		if err != nil {
 			return nil, echo_errors.ErrDatabaseOperation
 		}
-		if createResult.Next() {
-			id, found := createResult.Record().Get("id")
-			if !found {
-				return nil, echo_errors.ErrInternalServer
-			}
-			return id, nil
+		if !createResult.Next() {
+			return nil, echo_errors.ErrInternalServer
 		}
-		return nil, echo_errors.ErrInternalServer
+		id, found := createResult.Record().Get("id")
+		if !found {
+			return nil, echo_errors.ErrInternalServer
+		}
+
+		// Create relationships for subjects if they are users
+		for _, subject := range policy.Subjects {
+			if subject.Type == "user" {
+				_, err = transaction.Run(`
+					MATCH (u:`+echo_neo4j.LabelUser+` {id: $userID})
+					MATCH (o:`+echo_neo4j.LabelOrganization+` {id: u.organizationID})
+					MATCH (d:`+echo_neo4j.LabelDepartment+` {id: u.departmentID})
+					MERGE (u)-[:`+echo_neo4j.RelWorksFor+`]->(o)
+					MERGE (u)-[:`+echo_neo4j.RelMemberOf+`]->(d)
+					WITH u
+					UNWIND u.roleIds AS roleId
+					MATCH (r:`+echo_neo4j.LabelRole+` {id: roleId})
+					MERGE (u)-[:`+echo_neo4j.RelHasRole+`]->(r)
+					WITH u
+					UNWIND u.groupIds AS groupId
+					MATCH (g:`+echo_neo4j.LabelGroup+` {id: groupId})
+					MERGE (u)-[:`+echo_neo4j.RelBelongsToGroup+`]->(g)
+				`, map[string]interface{}{
+					"userID": subject.UserID,
+				})
+				if err != nil {
+					return nil, fmt.Errorf("failed to create user relationships: %w", err)
+				}
+			}
+		}
+
+		// Create relationships for resource types and attribute groups
+		_, err = transaction.Run(`
+			MATCH (p:`+echo_neo4j.LabelPolicy+` {id: $policyID})
+			UNWIND $resourceTypes AS resourceTypeID
+			MATCH (rt:`+echo_neo4j.LabelResourceType+` {id: resourceTypeID})
+			MERGE (p)-[:`+echo_neo4j.RelAppliesTo+`]->(rt)
+			WITH p
+			UNWIND $attributeGroups AS attributeGroupID
+			MATCH (ag:`+echo_neo4j.LabelAttributeGroup+` {id: attributeGroupID})
+			MERGE (p)-[:`+echo_neo4j.RelAppliesTo+`]->(ag)
+		`, map[string]interface{}{
+			"policyID":        policy.ID,
+			"resourceTypes":   policy.ResourceTypes,
+			"attributeGroups": policy.AttributeGroups,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create resource type and attribute group relationships: %w", err)
+		}
+
+		return id, nil
 	})
 
 	duration := time.Since(start)
@@ -183,43 +234,102 @@ func (dao *PolicyDAO) UpdatePolicy(ctx context.Context, policy model.Policy, use
 
 	_, err = session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-				MATCH (p:Policy {id: $id})
+				MATCH (p:` + echo_neo4j.LabelPolicy + ` {id: $id})
 				SET p.name = $name, p.description = $description, p.effect = $effect,
-					p.priority = $priority, p.version = $version, p.updatedAt = $updatedAt, p.createdAt = $createdAt,
+					p.priority = $priority, p.version = $version, p.updatedAt = $updatedAt,
 					p.active = $active, p.activationDate = $activationDate, p.deactivationDate = $deactivationDate,
-					p.subjects = $subjects, p.resources = $resources, p.actions = $actions, p.conditions = $conditions
+					p.subjects = $subjects, p.resourceTypes = $resourceTypes, p.attributeGroups = $attributeGroups, 
+					p.actions = $actions, p.conditions = $conditions, p.dynamicAttributes = $dynamicAttributes,
+					p.parentPolicyID = $parentPolicyID
 				RETURN p
 				`
 
-		// Convert subjects, resources, actions, and conditions to JSON strings
+		// Convert complex types to JSON strings
 		subjectsJSON, _ := json.Marshal(policy.Subjects)
-		resourcesJSON, _ := json.Marshal(policy.Resources)
+		resourceTypesJSON, _ := json.Marshal(policy.ResourceTypes)
+		attributeGroupsJSON, _ := json.Marshal(policy.AttributeGroups)
 		actionsJSON, _ := json.Marshal(policy.Actions)
 		conditionsJSON, _ := json.Marshal(policy.Conditions)
+		dynamicAttributesJSON, _ := json.Marshal(policy.DynamicAttributes)
 
 		parameters := map[string]interface{}{
 			"id": policy.ID, "name": policy.Name, "description": policy.Description,
 			"effect": policy.Effect, "priority": policy.Priority, "version": policy.Version,
 			"updatedAt": time.Now().Format(time.RFC3339),
-			"createdAt": oldPolicy.CreatedAt.Format(time.RFC3339),
 			"active":    policy.Active, "activationDate": formatNullableTime(policy.ActivationDate),
-			"deactivationDate": formatNullableTime(policy.DeactivationDate),
-			"subjects":         string(subjectsJSON),
-			"resources":        string(resourcesJSON),
-			"actions":          string(actionsJSON),
-			"conditions":       string(conditionsJSON),
+			"deactivationDate":  formatNullableTime(policy.DeactivationDate),
+			"subjects":          string(subjectsJSON),
+			"resourceTypes":     string(resourceTypesJSON),
+			"attributeGroups":   string(attributeGroupsJSON),
+			"actions":           string(actionsJSON),
+			"conditions":        string(conditionsJSON),
+			"dynamicAttributes": string(dynamicAttributesJSON),
+			"parentPolicyID":    policy.ParentPolicyID,
 		}
 		result, err := transaction.Run(query, parameters)
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute update query: %w", err)
 		}
-		if result.Next() {
-			node := result.Record().Values[0].(neo4j.Node)
-			fmt.Println("Node: ", node.Props)
-			updatedPolicy, _ = mapNodeToPolicy(node)
-			return nil, nil
+		if !result.Next() {
+			return nil, echo_errors.ErrPolicyNotFound
 		}
-		return nil, echo_errors.ErrPolicyNotFound
+		node := result.Record().Values[0].(neo4j.Node)
+		updatedPolicy, err = mapNodeToPolicy(node)
+		if err != nil {
+			return nil, fmt.Errorf("failed to map updated policy: %w", err)
+		}
+
+		// Update relationships for subjects if they are users
+		for _, subject := range policy.Subjects {
+			if subject.Type == "user" {
+				_, err = transaction.Run(`
+					MATCH (u:`+echo_neo4j.LabelUser+` {id: $userID})
+					MATCH (o:`+echo_neo4j.LabelOrganization+` {id: u.organizationID})
+					MATCH (d:`+echo_neo4j.LabelDepartment+` {id: u.departmentID})
+					MERGE (u)-[:`+echo_neo4j.RelWorksFor+`]->(o)
+					MERGE (u)-[:`+echo_neo4j.RelMemberOf+`]->(d)
+					WITH u
+					UNWIND u.roleIds AS roleId
+					MATCH (r:`+echo_neo4j.LabelRole+` {id: roleId})
+					MERGE (u)-[:`+echo_neo4j.RelHasRole+`]->(r)
+					WITH u
+					UNWIND u.groupIds AS groupId
+					MATCH (g:`+echo_neo4j.LabelGroup+` {id: groupId})
+					MERGE (u)-[:`+echo_neo4j.RelBelongsToGroup+`]->(g)
+				`, map[string]interface{}{
+					"userID": subject.UserID,
+				})
+				if err != nil {
+					return nil, fmt.Errorf("failed to update user relationships: %w", err)
+				}
+			}
+		}
+
+		// Update relationships for resource types and attribute groups
+		_, err = transaction.Run(`
+			MATCH (p:`+echo_neo4j.LabelPolicy+` {id: $policyID})
+			// Remove old relationships
+			OPTIONAL MATCH (p)-[r:`+echo_neo4j.RelAppliesTo+`]->()
+			DELETE r
+			// Create new relationships
+			WITH p
+			UNWIND $resourceTypes AS resourceTypeID
+			MATCH (rt:`+echo_neo4j.LabelResourceType+` {id: resourceTypeID})
+			MERGE (p)-[:`+echo_neo4j.RelAppliesTo+`]->(rt)
+			WITH p
+			UNWIND $attributeGroups AS attributeGroupID
+			MATCH (ag:`+echo_neo4j.LabelAttributeGroup+` {id: attributeGroupID})
+			MERGE (p)-[:`+echo_neo4j.RelAppliesTo+`]->(ag)
+		`, map[string]interface{}{
+			"policyID":        policy.ID,
+			"resourceTypes":   policy.ResourceTypes,
+			"attributeGroups": policy.AttributeGroups,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to update resource type and attribute group relationships: %w", err)
+		}
+
+		return nil, nil
 	})
 
 	duration := time.Since(start)
@@ -262,7 +372,7 @@ func (dao *PolicyDAO) DeletePolicy(ctx context.Context, policyID string, userID 
 
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		query := `
-        MATCH (p:Policy {id: $id})
+        MATCH (p:` + echo_neo4j.LabelPolicy + ` {id: $id})
         DETACH DELETE p
         `
 		result, err := transaction.Run(query, map[string]interface{}{"id": policyID})
@@ -317,7 +427,7 @@ func (dao *PolicyDAO) GetPolicy(ctx context.Context, policyID string) (*model.Po
 	defer session.Close()
 
 	query := `
-    MATCH (p:Policy {id: $id})
+    MATCH (p:` + echo_neo4j.LabelPolicy + ` {id: $id})
     RETURN p
     `
 	result, err := session.Run(query, map[string]interface{}{"id": policyID})
@@ -360,7 +470,7 @@ func (dao *PolicyDAO) ListPolicies(ctx context.Context, limit int, offset int) (
 	defer session.Close()
 
 	query := `
-    MATCH (p:Policy)
+    MATCH (p:` + echo_neo4j.LabelPolicy + `)
     RETURN p
     ORDER BY p.createdAt DESC
     SKIP $offset
@@ -406,7 +516,7 @@ func (dao *PolicyDAO) SearchPolicies(ctx context.Context, criteria model.PolicyS
 	defer session.Close()
 
 	var queryBuilder strings.Builder
-	queryBuilder.WriteString("MATCH (p:Policy) WHERE 1=1")
+	queryBuilder.WriteString("MATCH (p:` + echo_neo4j.LabelPolicy + `) WHERE 1=1")
 
 	params := make(map[string]interface{})
 
@@ -491,10 +601,10 @@ func (dao *PolicyDAO) AnalyzePolicyUsage(ctx context.Context, policyID string) (
 	defer session.Close()
 
 	query := `
-		MATCH (p:Policy {id: $policyID})
-		OPTIONAL MATCH (p)-[:APPLIES_TO]->(r:Resource)
-		OPTIONAL MATCH (p)-[:APPLIES_TO]->(s:Subject)
-		OPTIONAL MATCH (p)-[:HAS_CONDITION]->(c:Condition)
+		MATCH (p:` + echo_neo4j.LabelPolicy + ` {id: $policyID})
+		OPTIONAL MATCH (p)-[:` + echo_neo4j.RelAppliesTo + `]->(r:Resource)
+		OPTIONAL MATCH (p)-[:` + echo_neo4j.RelAppliesTo + `]->(s:Subject)
+		OPTIONAL MATCH (p)-[:` + echo_neo4j.RelHasCondition + `]->(c:Condition)
 		RETURN 
 			p.id AS policyID,
 			p.name AS policyName,
@@ -585,7 +695,11 @@ func mapNodeToPolicy(node neo4j.Node) (*model.Policy, error) {
 
 	// Effect
 	if effect, ok := props["effect"].(string); ok {
-		policy.Effect = effect
+		if effect == echo_neo4j.PolicyEffectAllow || effect == echo_neo4j.PolicyEffectDeny {
+			policy.Effect = effect
+		} else {
+			return nil, fmt.Errorf("invalid policy effect: %v", effect)
+		}
 	} else {
 		return nil, fmt.Errorf("failed to assert type for policy effect: %v", props["effect"])
 	}
@@ -602,6 +716,13 @@ func mapNodeToPolicy(node neo4j.Node) (*model.Policy, error) {
 		policy.Version = int(version)
 	} else {
 		return nil, fmt.Errorf("failed to assert type for policy version: %v", props["version"])
+	}
+
+	// ParentPolicyID
+	if parentPolicyID, ok := props["parentPolicyID"].(string); ok {
+		policy.ParentPolicyID = parentPolicyID
+	} else {
+		logger.Warn("Parent policy ID not found or null", zap.Any("ParentPolicyID", props["parentPolicyID"]))
 	}
 
 	// CreatedAt
@@ -648,13 +769,22 @@ func mapNodeToPolicy(node neo4j.Node) (*model.Policy, error) {
 		return nil, fmt.Errorf("failed to assert type for policy subjects: %v", props["subjects"])
 	}
 
-	// Resources
-	if resourcesJSON, ok := props["resources"].(string); ok {
-		if err := json.Unmarshal([]byte(resourcesJSON), &policy.Resources); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal policy resources: %w", err)
+	// ResourceTypes
+	if resourceTypesJSON, ok := props["resourceTypes"].(string); ok {
+		if err := json.Unmarshal([]byte(resourceTypesJSON), &policy.ResourceTypes); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal policy resource types: %w", err)
 		}
 	} else {
-		return nil, fmt.Errorf("failed to assert type for policy resources: %v", props["resources"])
+		return nil, fmt.Errorf("failed to assert type for policy resource types: %v", props["resourceTypes"])
+	}
+
+	// AttributeGroups
+	if attributeGroupsJSON, ok := props["attributeGroups"].(string); ok {
+		if err := json.Unmarshal([]byte(attributeGroupsJSON), &policy.AttributeGroups); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal policy attribute groups: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("failed to assert type for policy attribute groups: %v", props["attributeGroups"])
 	}
 
 	// Actions
@@ -673,6 +803,15 @@ func mapNodeToPolicy(node neo4j.Node) (*model.Policy, error) {
 		}
 	} else {
 		return nil, fmt.Errorf("failed to assert type for policy conditions: %v", props["conditions"])
+	}
+
+	// DynamicAttributes
+	if dynamicAttributesJSON, ok := props["dynamicAttributes"].(string); ok {
+		if err := json.Unmarshal([]byte(dynamicAttributesJSON), &policy.DynamicAttributes); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal policy dynamic attributes: %w", err)
+		}
+	} else {
+		logger.Warn("Dynamic attributes not found or null", zap.Any("DynamicAttributes", props["dynamicAttributes"]))
 	}
 
 	return policy, nil

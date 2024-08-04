@@ -26,7 +26,7 @@ func setupRouter() *gin.Engine {
 
 func TestPolicyController(t *testing.T) {
 	// Initialize logger
-	logger.InitLogger()
+	logger.InitLogger("../logging")
 	defer logger.Sync()
 
 	ctrl := gomock.NewController(t)
@@ -35,7 +35,8 @@ func TestPolicyController(t *testing.T) {
 	mockPolicyService := mock_service.NewMockIPolicyService(ctrl)
 	policyController := controller.NewPolicyController(mockPolicyService)
 	router := setupRouter()
-	policyController.RegisterRoutes(router)
+	api := router.Group("/")
+	policyController.RegisterRoutes(api)
 
 	t.Run("CreatePolicy_Success", func(t *testing.T) {
 		mockPolicyService.EXPECT().

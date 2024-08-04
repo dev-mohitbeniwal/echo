@@ -1,0 +1,261 @@
+[
+  {
+    "id": "policy1",
+    "name": "TechNova IT Admin Access",
+    "description": "Grants full access to IT resources for TechNova IT administrators",
+    "effect": "allow",
+    "subjects": [
+      {
+        "type": "role",
+        "attributes": {
+          "name": "System Administrator"
+        }
+      }
+    ],
+    "resource_types": ["RT001", "RT007"],
+    "attribute_groups": ["AG001", "AG005"],
+    "actions": ["create", "read", "update", "delete", "manage"],
+    "conditions": [
+      {
+        "attribute": "time",
+        "operator": "between",
+        "value": ["09:00", "17:00"]
+      }
+    ],
+    "dynamic_attributes": ["user_department", "resource_sensitivity"],
+    "priority": 1,
+    "version": 1,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z",
+    "active": true
+  },
+  {
+    "id": "policy2",
+    "name": "TechNova Financial Data Access",
+    "description": "Controls access to financial data for TechNova employees",
+    "effect": "allow",
+    "subjects": [
+      {
+        "type": "role",
+        "attributes": {
+          "name": "Financial Analyst"
+        }
+      },
+      {
+        "type": "group",
+        "attributes": {
+          "name": "Finance Department"
+        }
+      }
+    ],
+    "resource_types": ["RT001"],
+    "attribute_groups": ["AG001", "AG010"],
+    "actions": ["read", "update"],
+    "conditions": [
+      {
+        "attribute": "time",
+        "operator": "between",
+        "value": ["09:00", "17:00"]
+      },
+      {
+        "attribute": "ip_address",
+        "operator": "in_range",
+        "value": ["192.168.1.0/24"]
+      }
+    ],
+    "dynamic_attributes": ["user_role", "document_classification"],
+    "priority": 2,
+    "version": 1,
+    "created_at": "2023-01-15T00:00:00Z",
+    "updated_at": "2023-01-15T00:00:00Z",
+    "active": true
+  },
+  {
+    "id": "policy3",
+    "name": "HealthFirst Patient Data Access",
+    "description": "Controls access to patient records for HealthFirst medical staff",
+    "effect": "allow",
+    "subjects": [
+      {
+        "type": "role",
+        "attributes": {
+          "name": "Doctor"
+        }
+      },
+      {
+        "type": "role",
+        "attributes": {
+          "name": "Nurse"
+        }
+      }
+    ],
+    "resource_types": ["RT007"],
+    "attribute_groups": ["AG005"],
+    "actions": ["read", "update"],
+    "conditions": [
+      {
+        "attribute": "patient_consent",
+        "operator": "equals",
+        "value": true
+      },
+      {
+        "attribute": "emergency_situation",
+        "operator": "equals",
+        "value": false
+      }
+    ],
+    "dynamic_attributes": ["user_department", "patient_status"],
+    "priority": 1,
+    "version": 1,
+    "created_at": "2023-02-01T00:00:00Z",
+    "updated_at": "2023-02-01T00:00:00Z",
+    "active": true
+  },
+  {
+    "id": "policy4",
+    "name": "GreenEnergy Research Data Sharing",
+    "description": "Controls sharing of research data for GreenEnergy researchers",
+    "effect": "allow",
+    "subjects": [
+      {
+        "type": "role",
+        "attributes": {
+          "name": "Researcher"
+        }
+      },
+      {
+        "type": "role",
+        "attributes": {
+          "name": "Senior Researcher"
+        }
+      }
+    ],
+    "resource_types": ["RT001"],
+    "attribute_groups": ["AG001", "AG008"],
+    "actions": ["read", "share"],
+    "conditions": [
+      {
+        "attribute": "data_classification",
+        "operator": "not_equals",
+        "value": "top_secret"
+      },
+      {
+        "attribute": "approval_status",
+        "operator": "equals",
+        "value": "approved"
+      }
+    ],
+    "dynamic_attributes": ["user_clearance_level", "document_sensitivity"],
+    "priority": 2,
+    "version": 1,
+    "created_at": "2023-03-01T00:00:00Z",
+    "updated_at": "2023-03-01T00:00:00Z",
+    "active": true
+  },
+  {
+    "id": "policy5",
+    "name": "TechNova Customer Data Protection",
+    "description": "Restricts access to customer data for TechNova employees",
+    "effect": "deny",
+    "subjects": [
+      {
+        "type": "user",
+        "attributes": {
+          "organization_id": "org1"
+        }
+      }
+    ],
+    "resource_types": ["RT007"],
+    "attribute_groups": ["AG005"],
+    "actions": ["read", "update", "delete"],
+    "conditions": [
+      {
+        "attribute": "data_sensitivity",
+        "operator": "equals",
+        "value": "highly_sensitive"
+      },
+      {
+        "attribute": "user_clearance",
+        "operator": "less_than",
+        "value": "top_secret"
+      }
+    ],
+    "dynamic_attributes": ["user_role", "data_classification"],
+    "priority": 3,
+    "version": 1,
+    "created_at": "2023-04-01T00:00:00Z",
+    "updated_at": "2023-04-01T00:00:00Z",
+    "active": true
+  },
+  {
+    "id": "policy6",
+    "name": "HealthFirst Emergency Access",
+    "description": "Grants emergency access to patient data for HealthFirst staff",
+    "effect": "allow",
+    "subjects": [
+      {
+        "type": "role",
+        "attributes": {
+          "name": "Doctor"
+        }
+      },
+      {
+        "type": "role",
+        "attributes": {
+          "name": "Nurse"
+        }
+      }
+    ],
+    "resource_types": ["RT007"],
+    "attribute_groups": ["AG005"],
+    "actions": ["read", "update"],
+    "conditions": [
+      {
+        "attribute": "emergency_situation",
+        "operator": "equals",
+        "value": true
+      }
+    ],
+    "dynamic_attributes": ["user_role", "patient_status"],
+    "priority": 1,
+    "version": 1,
+    "created_at": "2023-05-01T00:00:00Z",
+    "updated_at": "2023-05-01T00:00:00Z",
+    "active": true
+  },
+  {
+    "id": "policy7",
+    "name": "GreenEnergy Confidential Document Access",
+    "description": "Controls access to confidential documents for GreenEnergy employees",
+    "effect": "allow",
+    "subjects": [
+      {
+        "type": "group",
+        "attributes": {
+          "name": "Senior Research Team"
+        }
+      }
+    ],
+    "resource_types": ["RT001"],
+    "attribute_groups": ["AG001", "AG006"],
+    "actions": ["read", "update"],
+    "conditions": [
+      {
+        "attribute": "time",
+        "operator": "between",
+        "value": ["09:00", "17:00"]
+      },
+      {
+        "attribute": "location",
+        "operator": "equals",
+        "value": "main_office"
+      }
+    ],
+    "dynamic_attributes": ["user_clearance_level", "document_sensitivity"],
+    "priority": 2,
+    "version": 1,
+    "created_at": "2023-06-01T00:00:00Z",
+    "updated_at": "2023-06-01T00:00:00Z",
+    "active": true
+  }
+]

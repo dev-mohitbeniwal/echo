@@ -1,3 +1,4 @@
+// api/model/policy.go
 package model
 
 import (
@@ -5,38 +6,38 @@ import (
 )
 
 type Policy struct {
-	ID               string      `json:"id"`
-	Name             string      `json:"name"`
-	Description      string      `json:"description"`
-	Effect           string      `json:"effect"` // "allow" or "deny"
-	Subjects         []Subject   `json:"subjects"`
-	Resources        []Resource  `json:"resources"`
-	Actions          []string    `json:"actions"`
-	Conditions       []Condition `json:"conditions"`
-	Priority         int         `json:"priority"`
-	Version          int         `json:"version"`
-	CreatedAt        time.Time   `json:"created_at"`
-	UpdatedAt        time.Time   `json:"updated_at"`
-	Active           bool        `json:"active"`
-	ActivationDate   *time.Time  `json:"activation_date,omitempty"`
-	DeactivationDate *time.Time  `json:"deactivation_date,omitempty"`
+	ID                string      `json:"id"`
+	Name              string      `json:"name"`
+	Description       string      `json:"description"`
+	Effect            string      `json:"effect"` // "allow" or "deny"
+	Subjects          []Subject   `json:"subjects"`
+	ResourceTypes     []string    `json:"resource_types"`
+	AttributeGroups   []string    `json:"attribute_groups"`
+	Actions           []string    `json:"actions"`
+	Conditions        []Condition `json:"conditions"`
+	DynamicAttributes []string    `json:"dynamic_attributes,omitempty"`
+	Priority          int         `json:"priority"`
+	Version           int         `json:"version"`
+	ParentPolicyID    string      `json:"parent_policy_id,omitempty"`
+	CreatedAt         time.Time   `json:"created_at"`
+	UpdatedAt         time.Time   `json:"updated_at"`
+	Active            bool        `json:"active"`
+	ActivationDate    *time.Time  `json:"activation_date,omitempty"`
+	DeactivationDate  *time.Time  `json:"deactivation_date,omitempty"`
 }
 
 type Subject struct {
 	Type       string            `json:"type"` // e.g., "user", "role", "group"
-	Attributes map[string]string `json:"attributes"`
-}
-
-type Resource struct {
-	Type       string            `json:"type"` // e.g., "file", "database", "api"
+	UserID     string            `json:"user_id,omitempty"`
 	Attributes map[string]string `json:"attributes"`
 }
 
 type Condition struct {
 	Attribute     string        `json:"attribute"`
-	Operator      string        `json:"operator"` // e.g., "equals", "contains", "greater_than"
+	Operator      string        `json:"operator"`
 	Value         interface{}   `json:"value"`
 	SubConditions *ConditionSet `json:"sub_conditions,omitempty"`
+	IsDynamic     bool          `json:"is_dynamic"` // Add this field
 }
 
 type ConditionSet struct {
@@ -69,11 +70,6 @@ type BelongsTo struct {
 type PartOf struct {
 	ResourceID     string `json:"resource_id"`
 	OrganizationID string `json:"organization_id"`
-}
-
-type Organization struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
 }
 
 type PolicySearchCriteria struct {

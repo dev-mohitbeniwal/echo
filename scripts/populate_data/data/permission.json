@@ -1,0 +1,164 @@
+[
+  {
+    "id": "perm_create",
+    "name": "Create",
+    "description": "Allows the creation of new resources",
+    "action": "CAN_CREATE"
+  },
+  {
+    "id": "perm_read",
+    "name": "Read",
+    "description": "Allows reading or viewing existing resources",
+    "action": "CAN_READ"
+  },
+  {
+    "id": "perm_update",
+    "name": "Update",
+    "description": "Allows modifying existing resources",
+    "action": "CAN_UPDATE"
+  },
+  {
+    "id": "perm_delete",
+    "name": "Delete",
+    "description": "Allows removing existing resources",
+    "action": "CAN_DELETE"
+  },
+  {
+    "id": "perm_execute",
+    "name": "Execute",
+    "description": "Allows running or executing processes or scripts",
+    "action": "CAN_EXECUTE"
+  },
+  {
+    "id": "perm_manage",
+    "name": "Manage",
+    "description": "Allows overall management of a resource or system",
+    "action": "CAN_MANAGE"
+  },
+  {
+    "id": "perm_list",
+    "name": "List",
+    "description": "Allows viewing a list or index of resources",
+    "action": "CAN_LIST"
+  },
+  {
+    "id": "perm_search",
+    "name": "Search",
+    "description": "Allows performing search operations",
+    "action": "CAN_SEARCH"
+  },
+  {
+    "id": "perm_share",
+    "name": "Share",
+    "description": "Allows sharing resources with other users",
+    "action": "CAN_SHARE"
+  },
+  {
+    "id": "perm_invite",
+    "name": "Invite",
+    "description": "Allows inviting new users to the system",
+    "action": "CAN_INVITE"
+  },
+  {
+    "id": "perm_assign_role",
+    "name": "Assign Role",
+    "description": "Allows assigning roles to users",
+    "action": "CAN_ASSIGN_ROLE"
+  },
+  {
+    "id": "perm_revoke_role",
+    "name": "Revoke Role",
+    "description": "Allows removing roles from users",
+    "action": "CAN_REVOKE_ROLE"
+  },
+  {
+    "id": "perm_create_policy",
+    "name": "Create Policy",
+    "description": "Allows creating new access policies",
+    "action": "CAN_CREATE_POLICY"
+  },
+  {
+    "id": "perm_modify_policy",
+    "name": "Modify Policy",
+    "description": "Allows modifying existing access policies",
+    "action": "CAN_MODIFY_POLICY"
+  },
+  {
+    "id": "perm_approve",
+    "name": "Approve",
+    "description": "Allows approving requests or changes",
+    "action": "CAN_APPROVE"
+  },
+  {
+    "id": "perm_reject",
+    "name": "Reject",
+    "description": "Allows rejecting requests or changes",
+    "action": "CAN_REJECT"
+  },
+  {
+    "id": "perm_audit",
+    "name": "Audit",
+    "description": "Allows performing audit operations",
+    "action": "CAN_AUDIT"
+  },
+  {
+    "id": "perm_view_logs",
+    "name": "View Logs",
+    "description": "Allows viewing system or access logs",
+    "action": "CAN_VIEW_LOGS"
+  },
+  {
+    "id": "perm_create_tenant",
+    "name": "Create Tenant",
+    "description": "Allows creating new tenants in a multi-tenant system",
+    "action": "CAN_CREATE_TENANT"
+  },
+  {
+    "id": "perm_manage_tenant",
+    "name": "Manage Tenant",
+    "description": "Allows managing existing tenants",
+    "action": "CAN_MANAGE_TENANT"
+  },
+  {
+    "id": "perm_access_confidential",
+    "name": "Access Confidential",
+    "description": "Allows access to confidential resources",
+    "action": "CAN_ACCESS_CONFIDENTIAL"
+  },
+  {
+    "id": "perm_export",
+    "name": "Export",
+    "description": "Allows exporting data from the system",
+    "action": "CAN_EXPORT"
+  },
+  {
+    "id": "perm_import",
+    "name": "Import",
+    "description": "Allows importing data into the system",
+    "action": "CAN_IMPORT"
+  },
+  {
+    "id": "perm_access_during_business_hours",
+    "name": "Access During Business Hours",
+    "description": "Allows access only during defined business hours",
+    "action": "CAN_ACCESS_DURING_BUSINESS_HOURS"
+  },
+  {
+    "id": "perm_access_from_approved_location",
+    "name": "Access From Approved Location",
+    "description": "Allows access only from approved physical or network locations",
+    "action": "CAN_ACCESS_FROM_APPROVED_LOCATION"
+  },
+  {
+    "id": "perm_use_advanced_features",
+    "name": "Use Advanced Features",
+    "description": "Allows use of advanced system features",
+    "action": "CAN_USE_ADVANCED_FEATURES"
+  },
+  {
+    "id": "perm_access_beta_features",
+    "name": "Access Beta Features",
+    "description": "Allows access to beta or unreleased features",
+    "action": "CAN_ACCESS_BETA_FEATURES"
+  }
+]

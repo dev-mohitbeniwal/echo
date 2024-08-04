@@ -10,39 +10,43 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
 	"github.com/dev-mohitbeniwal/echo/api/audit"
 	"github.com/dev-mohitbeniwal/echo/api/config"
 	"github.com/dev-mohitbeniwal/echo/api/controller"
-	"github.com/dev-mohitbeniwal/echo/api/dao"
 	"github.com/dev-mohitbeniwal/echo/api/db"
 	logger "github.com/dev-mohitbeniwal/echo/api/logging"
-	"github.com/dev-mohitbeniwal/echo/api/middleware"
+	router "github.com/dev-mohitbeniwal/echo/api/router"
 	"github.com/dev-mohitbeniwal/echo/api/service"
 	"github.com/dev-mohitbeniwal/echo/api/util"
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatalf("Application error: %v", err)
+	}
+}
+
+func run() error {
 	// Initialize configuration
 	if err := config.InitConfig(); err != nil {
-		log.Fatalf("Failed to initialize config: %v", err)
+		return fmt.Errorf("failed to initialize config: %w", err)
 	}
 
 	// Initialize logger
-	logger.InitLogger()
+	logger.InitLogger(config.GetString("log.file"))
 	defer logger.Sync()
 
 	// Initialize Neo4j
 	if err := db.InitNeo4j(); err != nil {
-		logger.Fatal("Failed to initialize Neo4j", zap.Error(err))
+		return fmt.Errorf("failed to initialize Neo4j: %w", err)
 	}
 	defer db.CloseNeo4j()
 
 	// Initialize Redis
 	if err := db.InitRedis(); err != nil {
-		logger.Fatal("Failed to initialize Redis", zap.Error(err))
+		return fmt.Errorf("failed to initialize Redis: %w", err)
 	}
 	defer db.CloseRedis()
 
@@ -56,33 +60,22 @@ func main() {
 	validationUtil := util.NewValidationUtil()
 	cacheService := util.NewCacheService()
 	notificationService := util.NewNotificationService()
-	auditRepository, _ := audit.NewElasticsearchRepository(config.GetString("elasticsearch.url"))
+	auditRepository, err := audit.NewElasticsearchRepository(config.GetString("elasticsearch.url"))
+	if err != nil {
+		return fmt.Errorf("failed to create audit repository: %w", err)
+	}
 	auditService := audit.NewService(auditRepository)
 
-	// Initialize DAOs
-	policyDAO := dao.NewPolicyDAO(db.Neo4jDriver, auditService)
+	services, err := service.InitializeServices(db.Neo4jDriver, auditService, validationUtil, cacheService, notificationService, eventBus)
+	if err != nil {
+		return fmt.Errorf("failed to initialize services: %w", err)
+	}
 
-	// Initialize services
-	policyService := service.NewPolicyService(
-		policyDAO,
-		validationUtil,
-		cacheService,
-		notificationService,
-		eventBus,
-	)
+	controllers := controller.InitializeControllers(services)
 
-	// Initialize controllers
-	policyController := controller.NewPolicyController(policyService)
-
-	// Set up Gin
-	gin.SetMode(gin.ReleaseMode)
-	router := gin.New()
-	router.Use(gin.Recovery())
-	router.Use(middleware.Logger())
-	router.Use(middleware.RateLimiter(100, time.Minute)) // 100 requests per minute
-
-	// Register routes
-	policyController.RegisterRoutes(router)
+	rateLimitRequests := config.GetInt("rate_limit.requests")
+	rateLimitDuration := config.GetDuration("rate_limit.duration")
+	router := router.SetupRouter(controllers, rateLimitRequests, rateLimitDuration)
 
 	// Set up the server
 	server := &http.Server{
@@ -109,8 +102,9 @@ func main() {
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
-		logger.Fatal("Server forced to shutdown", zap.Error(err))
+		return fmt.Errorf("server forced to shutdown: %w", err)
 	}
 
 	logger.Info("Server exiting")
+	return nil
 }

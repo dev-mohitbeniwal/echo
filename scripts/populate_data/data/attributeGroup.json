@@ -1,0 +1,102 @@
+[
+  {
+    "id": "AG001",
+    "name": "Document Metadata",
+    "attributes": {
+      "author": "string",
+      "version": "string",
+      "page_count": "integer",
+      "language": "string"
+    }
+  },
+  {
+    "id": "AG002",
+    "name": "Image Properties",
+    "attributes": {
+      "width": "integer",
+      "height": "integer",
+      "color_space": "string",
+      "dpi": "integer"
+    }
+  },
+  {
+    "id": "AG003",
+    "name": "Video Information",
+    "attributes": {
+      "duration": "integer",
+      "frame_rate": "float",
+      "resolution": "string",
+      "codec": "string"
+    }
+  },
+  {
+    "id": "AG004",
+    "name": "Audio Details",
+    "attributes": {
+      "duration": "integer",
+      "bit_rate": "integer",
+      "sample_rate": "integer",
+      "channels": "integer"
+    }
+  },
+  {
+    "id": "AG005",
+    "name": "File System Attributes",
+    "attributes": {
+      "file_size": "integer",
+      "creation_date": "datetime",
+      "last_modified": "datetime",
+      "file_extension": "string"
+    }
+  },
+  {
+    "id": "AG006",
+    "name": "Security Classification",
+    "attributes": {
+      "classification_level": "string",
+      "access_group": "string",
+      "encryption_type": "string",
+      "retention_period": "integer"
+    }
+  },
+  {
+    "id": "AG007",
+    "name": "Geographical Data",
+    "attributes": {
+      "latitude": "float",
+      "longitude": "float",
+      "altitude": "float",
+      "location_name": "string"
+    }
+  },
+  {
+    "id": "AG008",
+    "name": "Copyright Information",
+    "attributes": {
+      "copyright_holder": "string",
+      "license_type": "string",
+      "usage_rights": "string",
+      "expiration_date": "date"
+    }
+  },
+  {
+    "id": "AG009",
+    "name": "Project Management",
+    "attributes": {
+      "project_name": "string",
+      "project_manager": "string",
+      "start_date": "date",
+      "end_date": "date"
+    }
+  },
+  {
+    "id": "AG010",
+    "name": "E-commerce Product",
+    "attributes": {
+      "product_id": "string",
+      "price": "float",
+      "inventory_count": "integer",
+      "category": "string"
+    }
+  }
+]

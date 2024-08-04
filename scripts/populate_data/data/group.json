@@ -1,0 +1,243 @@
+[
+  {
+    "id": "group1",
+    "name": "IT Department",
+    "description": "All IT staff",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "roles": ["role1", "role3", "role9"],
+    "attributes": {
+      "clearance_level": "high",
+      "tech_access": "full"
+    }
+  },
+  {
+    "id": "group2",
+    "name": "HR Team",
+    "description": "Human Resources personnel",
+    "organization_id": "org1",
+    "department_id": "dept2",
+    "roles": ["role2"],
+    "attributes": {
+      "clearance_level": "medium",
+      "data_sensitivity": "high"
+    }
+  },
+  {
+    "id": "group3",
+    "name": "Finance Department",
+    "description": "Finance and accounting staff",
+    "organization_id": "org1",
+    "department_id": "dept3",
+    "roles": ["role4", "role6"],
+    "attributes": {
+      "clearance_level": "high",
+      "financial_access": "full"
+    }
+  },
+  {
+    "id": "group4",
+    "name": "Customer Support",
+    "description": "Customer service representatives",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "roles": ["role5"],
+    "attributes": {
+      "clearance_level": "low",
+      "customer_data_access": "limited"
+    }
+  },
+  {
+    "id": "group5",
+    "name": "Sales Team",
+    "description": "Sales personnel",
+    "organization_id": "org1",
+    "department_id": "dept3",
+    "roles": ["role6"],
+    "attributes": {
+      "clearance_level": "medium",
+      "customer_data_access": "full"
+    }
+  },
+  {
+    "id": "group6",
+    "name": "Marketing Team",
+    "description": "Marketing personnel",
+    "organization_id": "org1",
+    "department_id": "dept3",
+    "roles": ["role7"],
+    "attributes": {
+      "clearance_level": "medium",
+      "brand_assets_access": "full"
+    }
+  },
+  {
+    "id": "group7",
+    "name": "Product Management",
+    "description": "Product managers and related staff",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "roles": ["role8"],
+    "attributes": {
+      "clearance_level": "high",
+      "product_data_access": "full"
+    }
+  },
+  {
+    "id": "group8",
+    "name": "Quality Assurance",
+    "description": "QA testers and related staff",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "roles": ["role9"],
+    "attributes": {
+      "clearance_level": "medium",
+      "testing_environment_access": "full"
+    }
+  },
+  {
+    "id": "group9",
+    "name": "Legal Team",
+    "description": "Legal department staff",
+    "organization_id": "org1",
+    "department_id": "dept2",
+    "roles": ["role10"],
+    "attributes": {
+      "clearance_level": "high",
+      "legal_document_access": "full"
+    }
+  },
+  {
+    "id": "group10",
+    "name": "Executive Team",
+    "description": "C-level executives",
+    "organization_id": "org1",
+    "department_id": null,
+    "roles": ["role11"],
+    "attributes": {
+      "clearance_level": "highest",
+      "executive_access": "full"
+    }
+  },
+  {
+    "id": "group11",
+    "name": "Data Science Team",
+    "description": "Data scientists and analysts",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "roles": ["role12"],
+    "attributes": {
+      "clearance_level": "high",
+      "data_access": "full"
+    }
+  },
+  {
+    "id": "group12",
+    "name": "Emergency Room Staff",
+    "description": "ER doctors and nurses",
+    "organization_id": "org2",
+    "department_id": "dept4",
+    "roles": ["role13", "role14"],
+    "attributes": {
+      "clearance_level": "high",
+      "patient_data_access": "full"
+    }
+  },
+  {
+    "id": "group13",
+    "name": "Nursing Staff",
+    "description": "General nursing personnel",
+    "organization_id": "org2",
+    "department_id": "dept4",
+    "roles": ["role14"],
+    "attributes": {
+      "clearance_level": "medium",
+      "patient_data_access": "limited"
+    }
+  },
+  {
+    "id": "group14",
+    "name": "Radiology Department",
+    "description": "Radiologists and radiology technicians",
+    "organization_id": "org2",
+    "department_id": "dept5",
+    "roles": ["role15"],
+    "attributes": {
+      "clearance_level": "high",
+      "imaging_data_access": "full"
+    }
+  },
+  {
+    "id": "group15",
+    "name": "Hospital Administration",
+    "description": "Hospital administrators and managers",
+    "organization_id": "org2",
+    "department_id": null,
+    "roles": ["role16"],
+    "attributes": {
+      "clearance_level": "highest",
+      "hospital_data_access": "full"
+    }
+  },
+  {
+    "id": "group16",
+    "name": "Research Team",
+    "description": "R&D researchers",
+    "organization_id": "org3",
+    "department_id": "dept6",
+    "roles": ["role17", "role18"],
+    "attributes": {
+      "clearance_level": "high",
+      "research_data_access": "full"
+    }
+  },
+  {
+    "id": "group17",
+    "name": "Senior Research Team",
+    "description": "Senior researchers and research leads",
+    "organization_id": "org3",
+    "department_id": "dept6",
+    "roles": ["role18"],
+    "attributes": {
+      "clearance_level": "highest",
+      "research_data_access": "full",
+      "grant_approval": "yes"
+    }
+  },
+  {
+    "id": "group18",
+    "name": "Operations Team",
+    "description": "Operations staff",
+    "organization_id": "org3",
+    "department_id": "dept7",
+    "roles": ["role19", "role20"],
+    "attributes": {
+      "clearance_level": "medium",
+      "operations_data_access": "limited"
+    }
+  },
+  {
+    "id": "group19",
+    "name": "Maintenance Team",
+    "description": "Maintenance and facility staff",
+    "organization_id": "org3",
+    "department_id": "dept7",
+    "roles": ["role20"],
+    "attributes": {
+      "clearance_level": "low",
+      "facility_access": "full"
+    }
+  },
+  {
+    "id": "group20",
+    "name": "Cross-Functional Project Team",
+    "description": "Multi-disciplinary project team",
+    "organization_id": "org1",
+    "department_id": null,
+    "roles": ["role3", "role7", "role8", "role12"],
+    "attributes": {
+      "clearance_level": "high",
+      "project_data_access": "full"
+    }
+  }
+]

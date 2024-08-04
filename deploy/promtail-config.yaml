@@ -1,0 +1,35 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: echo_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: echo_api
+          __path__: /app/logging/*.log
+    pipeline_stages:
+      - json:
+          expressions:
+            stacktrace: stacktrace
+            query: query
+      - replace:
+          expression: '"stacktrace":"(.*?)"'
+          replace: '","parsedStackTrace":{{ .Value | replace "\\t" "  " | split "\\n" | toJson }}, "emptyLine":"' # Hack for parsing the Golang stack trace for grafana
+      - replace:
+          expression: '"query":"(.*?)"'
+          # Just replace the `\n` and `\t` characters with spaces
+          replace: '{{ .Value | replace "\\t" "  " | replace "\\n" " " }}'
+      - json:
+          expressions:
+            log: ""
+      - output:
+          source: log

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "RT001",
+    "name": "Document",
+    "description": "Any type of document file such as PDF, DOC, or TXT"
+  },
+  {
+    "id": "RT002",
+    "name": "Image",
+    "description": "Image files including JPG, PNG, and GIF formats"
+  },
+  {
+    "id": "RT003",
+    "name": "Video",
+    "description": "Video files in formats like MP4, AVI, or MOV"
+  },
+  {
+    "id": "RT004",
+    "name": "Audio",
+    "description": "Audio files such as MP3, WAV, or AAC"
+  },
+  {
+    "id": "RT005",
+    "name": "Spreadsheet",
+    "description": "Spreadsheet files like XLSX or CSV"
+  },
+  {
+    "id": "RT006",
+    "name": "Presentation",
+    "description": "Presentation files such as PPT or PPTX"
+  },
+  {
+    "id": "RT007",
+    "name": "Database",
+    "description": "Database files or dumps"
+  },
+  {
+    "id": "RT008",
+    "name": "Source Code",
+    "description": "Programming source code files"
+  },
+  {
+    "id": "RT009",
+    "name": "Archive",
+    "description": "Compressed archive files like ZIP or RAR"
+  },
+  {
+    "id": "RT010",
+    "name": "CAD Drawing",
+    "description": "Computer-Aided Design (CAD) drawing files"
+  }
+]

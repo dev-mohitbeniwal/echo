@@ -385,7 +385,7 @@ func (s *PolicyService) hasPolicyChanged(oldPolicy, newPolicy *model.Policy) boo
 		oldPolicy.Priority != newPolicy.Priority ||
 		oldPolicy.Active != newPolicy.Active ||
 		!reflect.DeepEqual(oldPolicy.Subjects, newPolicy.Subjects) ||
-		!reflect.DeepEqual(oldPolicy.Resources, newPolicy.Resources) ||
+		!reflect.DeepEqual(oldPolicy.ResourceTypes, newPolicy.ResourceTypes) ||
 		!reflect.DeepEqual(oldPolicy.Actions, newPolicy.Actions) ||
 		!reflect.DeepEqual(oldPolicy.Conditions, newPolicy.Conditions) {
 		return true

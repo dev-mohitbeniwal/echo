@@ -126,3 +126,33 @@ func (n *NotificationService) NotifyPermissionChange(ctx context.Context, change
 		zap.String("permissionName", permission.Name))
 	return nil
 }
+
+// NotifyResourceChange
+func (n *NotificationService) NotifyResourceChange(ctx context.Context, changeType string, resource model.Resource) error {
+	// Logic to notify users about resource changes
+	logger.Info("Notifying resource change",
+		zap.String("changeType", changeType),
+		zap.String("resourceID", resource.ID),
+		zap.String("resourceName", resource.Name))
+	return nil
+}
+
+// NotifyResourceTypeChange
+func (n *NotificationService) NotifyResourceTypeChange(ctx context.Context, changeType string, resourceType model.ResourceType) error {
+	// Logic to notify users about resource type changes
+	logger.Info("Notifying resource type change",
+		zap.String("changeType", changeType),
+		zap.String("resourceTypeID", resourceType.ID),
+		zap.String("resourceTypeName", resourceType.Name))
+	return nil
+}
+
+// NotifyAttributeGroupChange
+func (n *NotificationService) NotifyAttributeGroupChange(ctx context.Context, changeType string, attrGroup model.AttributeGroup) error {
+	// Logic to notify users about attribute group changes
+	logger.Info("Notifying attribute group change",
+		zap.String("changeType", changeType),
+		zap.String("attrGroupID", attrGroup.ID),
+		zap.String("attrGroupName", attrGroup.Name))
+	return nil
+}

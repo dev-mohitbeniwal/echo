@@ -434,8 +434,8 @@ func mapNodeToOrganization(node neo4j.Node) (*model.Organization, error) {
 
 	org.ID = props["id"].(string)
 	org.Name = props["name"].(string)
-	org.CreatedAt = helper_util.ParseTime(props["createdAt"].(string))
-	org.UpdatedAt = helper_util.ParseTime(props["updatedAt"].(string))
+	org.CreatedAt, _ = helper_util.ParseTime(props["createdAt"].(string))
+	org.UpdatedAt, _ = helper_util.ParseTime(props["updatedAt"].(string))
 
 	return org, nil
 }

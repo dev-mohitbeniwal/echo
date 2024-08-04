@@ -596,8 +596,8 @@ func mapNodeToUser(node neo4j.Node) (*model.User, error) {
 		return nil, fmt.Errorf("failed to unmarshal user attributes: %w", err)
 	}
 
-	user.CreatedAt = helper_util.ParseTime(props["createdAt"].(string))
-	user.UpdatedAt = helper_util.ParseTime(props["updatedAt"].(string))
+	user.CreatedAt, _ = helper_util.ParseTime(props["createdAt"].(string))
+	user.UpdatedAt, _ = helper_util.ParseTime(props["updatedAt"].(string))
 
 	return user, nil
 }

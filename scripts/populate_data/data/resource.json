@@ -1,0 +1,622 @@
+[
+  {
+    "id": "res1",
+    "name": "Annual Financial Report 2023",
+    "description": "Confidential financial report for TechNova Solutions",
+    "type": "DOCUMENT",
+    "type_id": "RT001",
+    "uri": "/documents/financial/annual-2023.pdf",
+    "organization_id": "org1",
+    "department_id": "dept3",
+    "owner_id": "user4",
+    "status": "active",
+    "version": 1,
+    "tags": ["financial", "confidential", "annual-report"],
+    "metadata": {
+      "fiscal_year": "2023"
+    },
+    "attribute_group_id": "AG001",
+    "sensitivity": "confidential",
+    "classification": "internal",
+    "location": "financial-server",
+    "format": "pdf",
+    "size": 5242880,
+    "created_at": "2023-01-15T09:00:00Z",
+    "updated_at": "2023-01-15T09:00:00Z",
+    "created_by": "user4",
+    "updated_by": "user4",
+    "inherited_acl": false,
+    "attributes": {
+      "fiscal_year": "2023"
+    }
+  },
+  {
+    "id": "res2",
+    "name": "Employee Handbook",
+    "description": "Official employee handbook for TechNova Solutions",
+    "type": "DOCUMENT",
+    "type_id": "RT001",
+    "uri": "/documents/hr/employee-handbook-v3.docx",
+    "organization_id": "org1",
+    "department_id": "dept2",
+    "owner_id": "user2",
+    "status": "active",
+    "version": 3,
+    "tags": ["hr", "policies", "procedures"],
+    "metadata": {
+      "last_updated": "2023-06-15"
+    },
+    "attribute_group_id": "AG001",
+    "sensitivity": "internal",
+    "classification": "general",
+    "location": "hr-server",
+    "format": "docx",
+    "size": 2097152,
+    "created_at": "2023-06-15T10:00:00Z",
+    "updated_at": "2023-06-15T10:00:00Z",
+    "created_by": "user2",
+    "updated_by": "user2",
+    "inherited_acl": false,
+    "attributes": {
+      "last_updated": "2023-06-15"
+    }
+  },
+  {
+    "id": "res3",
+    "name": "Product Roadmap 2024",
+    "description": "Confidential product development plans for next year",
+    "type": "DOCUMENT",
+    "type_id": "RT006",
+    "uri": "/documents/product/roadmap-2024.pptx",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "owner_id": "user8",
+    "status": "active",
+    "version": 2,
+    "tags": ["product", "confidential", "roadmap"],
+    "metadata": {
+      "quarter": "Q4-2023"
+    },
+    "attribute_group_id": "AG001",
+    "sensitivity": "highly-confidential",
+    "classification": "restricted",
+    "location": "product-server",
+    "format": "pptx",
+    "size": 3145728,
+    "created_at": "2023-07-01T14:00:00Z",
+    "updated_at": "2023-07-01T14:00:00Z",
+    "created_by": "user8",
+    "updated_by": "user8",
+    "inherited_acl": false,
+    "attributes": {
+      "quarter": "Q4-2023"
+    }
+  },
+  {
+    "id": "res4",
+    "name": "Customer Database",
+    "description": "Central database of all customer information",
+    "type": "DATABASE",
+    "type_id": "RT007",
+    "uri": "jdbc:mysql://technova.com/customer_db",
+    "organization_id": "org1",
+    "department_id": "dept3",
+    "owner_id": "user6",
+    "status": "active",
+    "version": 1,
+    "tags": ["customer", "sales", "confidential"],
+    "metadata": {
+      "records_count": "1000000+"
+    },
+    "attribute_group_id": "AG005",
+    "sensitivity": "confidential",
+    "classification": "restricted",
+    "location": "db-server-01",
+    "format": "mysql",
+    "size": 10737418240,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-07-15T12:00:00Z",
+    "created_by": "user6",
+    "updated_by": "user6",
+    "inherited_acl": false,
+    "attributes": {
+      "records_count": "1000000+"
+    }
+  },
+  {
+    "id": "res5",
+    "name": "Source Code Repository",
+    "description": "Main source code repository for TechNova products",
+    "type": "CODE_REPOSITORY",
+    "type_id": "RT008",
+    "uri": "https://github.com/technova/main-repo",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "owner_id": "user3",
+    "status": "active",
+    "version": 1,
+    "tags": ["code", "confidential", "intellectual-property"],
+    "metadata": {
+      "branches": "50+"
+    },
+    "attribute_group_id": "AG008",
+    "sensitivity": "highly-confidential",
+    "classification": "restricted",
+    "location": "github.com",
+    "format": "git",
+    "size": 5368709120,
+    "created_at": "2022-01-01T00:00:00Z",
+    "updated_at": "2023-07-15T23:59:59Z",
+    "created_by": "user3",
+    "updated_by": "user3",
+    "inherited_acl": false,
+    "attributes": {
+      "branches": "50+"
+    }
+  },
+  {
+    "id": "res6",
+    "name": "Marketing Campaign Data",
+    "description": "Data and analytics for current marketing campaigns",
+    "type": "SPREADSHEET",
+    "type_id": "RT005",
+    "uri": "/documents/marketing/campaign-data-q2-2023.xlsx",
+    "organization_id": "org1",
+    "department_id": "dept3",
+    "owner_id": "user7",
+    "status": "active",
+    "version": 5,
+    "tags": ["marketing", "analytics", "campaign"],
+    "metadata": {
+      "quarter": "Q2-2023"
+    },
+    "attribute_group_id": "AG010",
+    "sensitivity": "confidential",
+    "classification": "internal",
+    "location": "marketing-server",
+    "format": "xlsx",
+    "size": 1048576,
+    "created_at": "2023-04-01T09:00:00Z",
+    "updated_at": "2023-06-30T17:00:00Z",
+    "created_by": "user7",
+    "updated_by": "user7",
+    "inherited_acl": false,
+    "attributes": {
+      "quarter": "Q2-2023"
+    }
+  },
+  {
+    "id": "res7",
+    "name": "Patient Records Database",
+    "description": "Central database for patient records",
+    "type": "DATABASE",
+    "type_id": "RT007",
+    "uri": "jdbc:mysql://healthfirst.com/patient_records",
+    "organization_id": "org2",
+    "department_id": "dept4",
+    "owner_id": "user13",
+    "status": "active",
+    "version": 1,
+    "tags": ["medical", "confidential", "patient-data"],
+    "metadata": {
+      "records_count": "500000+"
+    },
+    "attribute_group_id": "AG005",
+    "sensitivity": "highly-confidential",
+    "classification": "restricted",
+    "location": "secure-medical-server",
+    "format": "mysql",
+    "size": 21474836480,
+    "created_at": "2022-01-01T00:00:00Z",
+    "updated_at": "2023-07-15T23:59:59Z",
+    "created_by": "user13",
+    "updated_by": "user13",
+    "inherited_acl": false,
+    "attributes": {
+      "records_count": "500000+"
+    }
+  },
+  {
+    "id": "res8",
+    "name": "Medical Equipment Inventory",
+    "description": "Inventory and maintenance records for medical equipment",
+    "type": "SPREADSHEET",
+    "type_id": "RT005",
+    "uri": "/documents/operations/equipment-inventory.xlsx",
+    "organization_id": "org2",
+    "department_id": "dept4",
+    "owner_id": "user16",
+    "status": "active",
+    "version": 8,
+    "tags": ["inventory", "equipment", "operations"],
+    "metadata": {
+      "last_updated": "2023-07-01"
+    },
+    "attribute_group_id": "AG005",
+    "sensitivity": "internal",
+    "classification": "general",
+    "location": "operations-server",
+    "format": "xlsx",
+    "size": 2097152,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-07-01T12:00:00Z",
+    "created_by": "user16",
+    "updated_by": "user16",
+    "inherited_acl": false,
+    "attributes": {
+      "last_updated": "2023-07-01"
+    }
+  },
+  {
+    "id": "res9",
+    "name": "Radiology Images Archive",
+    "description": "Archive of patient radiology images",
+    "type": "IMAGE_ARCHIVE",
+    "type_id": "RT002",
+    "uri": "/medical-images/radiology/",
+    "organization_id": "org2",
+    "department_id": "dept5",
+    "owner_id": "user15",
+    "status": "active",
+    "version": 1,
+    "tags": ["medical", "radiology", "patient-data"],
+    "metadata": {
+      "image_count": "1000000+"
+    },
+    "attribute_group_id": "AG002",
+    "sensitivity": "highly-confidential",
+    "classification": "restricted",
+    "location": "secure-image-server",
+    "format": "dicom",
+    "size": 1099511627776,
+    "created_at": "2022-01-01T00:00:00Z",
+    "updated_at": "2023-07-15T23:59:59Z",
+    "created_by": "user15",
+    "updated_by": "user15",
+    "inherited_acl": false,
+    "attributes": {
+      "image_count": "1000000+"
+    }
+  },
+  {
+    "id": "res10",
+    "name": "Hospital Policies and Procedures",
+    "description": "Official policies and procedures for HealthFirst Medical Center",
+    "type": "DOCUMENT",
+    "type_id": "RT001",
+    "uri": "/documents/admin/policies-and-procedures-v5.pdf",
+    "organization_id": "org2",
+    "department_id": null,
+    "owner_id": "user16",
+    "status": "active",
+    "version": 5,
+    "tags": ["policies", "procedures", "compliance"],
+    "metadata": {
+      "last_reviewed": "2023-05-30"
+    },
+    "attribute_group_id": "AG001",
+    "sensitivity": "internal",
+    "classification": "general",
+    "location": "admin-server",
+    "format": "pdf",
+    "size": 10485760,
+    "created_at": "2022-01-01T00:00:00Z",
+    "updated_at": "2023-05-30T15:00:00Z",
+    "created_by": "user16",
+    "updated_by": "user16",
+    "inherited_acl": false,
+    "attributes": {
+      "last_reviewed": "2023-05-30"
+    }
+  },
+  {
+    "id": "res11",
+    "name": "Green Energy Patent Application",
+    "description": "Patent application for new solar panel technology",
+    "type": "DOCUMENT",
+    "type_id": "RT001",
+    "uri": "/documents/legal/patent-app-2023-001.docx",
+    "organization_id": "org3",
+    "department_id": "dept6",
+    "owner_id": "user18",
+    "status": "active",
+    "version": 2,
+    "tags": ["legal", "confidential", "patent"],
+    "metadata": {
+      "patent_status": "pending"
+    },
+    "attribute_group_id": "AG008",
+    "sensitivity": "confidential",
+    "classification": "restricted",
+    "location": "legal-server",
+    "format": "docx",
+    "size": 1572864,
+    "created_at": "2023-03-15T09:00:00Z",
+    "updated_at": "2023-06-20T14:30:00Z",
+    "created_by": "user18",
+    "updated_by": "user18",
+    "inherited_acl": false,
+    "attributes": {
+      "patent_status": "pending"
+    }
+  },
+  {
+    "id": "res12",
+    "name": "Renewable Energy Research Data",
+    "description": "Compiled research data on renewable energy technologies",
+    "type": "DATABASE",
+    "type_id": "RT007",
+    "uri": "jdbc:postgresql://greenenergy.com/research_data",
+    "organization_id": "org3",
+    "department_id": "dept6",
+    "owner_id": "user17",
+    "status": "active",
+    "version": 1,
+    "tags": ["research", "confidential", "renewable-energy"],
+    "metadata": {
+      "data_points": "10000000+"
+    },
+    "attribute_group_id": "AG005",
+    "sensitivity": "confidential",
+    "classification": "internal",
+    "location": "research-db-server",
+    "format": "postgresql",
+    "size": 53687091200,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-07-15T23:59:59Z",
+    "created_by": "user17",
+    "updated_by": "user17",
+    "inherited_acl": false,
+    "attributes": {
+      "data_points": "10000000+"
+    }
+  },
+  {
+    "id": "res13",
+    "name": "Wind Turbine Schematics",
+    "description": "Detailed schematics for next-gen wind turbine design",
+    "type": "CAD_FILE",
+    "type_id": "RT010",
+    "uri": "/engineering/wind-turbine-v2.dwg",
+    "organization_id": "org3",
+    "department_id": "dept6",
+    "owner_id": "user18",
+    "status": "active",
+    "version": 2,
+    "tags": ["engineering", "confidential", "wind-energy"],
+    "metadata": {
+      "design_phase": "final"
+    },
+    "attribute_group_id": "AG002",
+    "sensitivity": "highly-confidential",
+    "classification": "restricted",
+    "location": "engineering-server",
+    "format": "dwg",
+    "size": 52428800,
+    "created_at": "2023-05-01T10:00:00Z",
+    "updated_at": "2023-07-10T16:45:00Z",
+    "created_by": "user18",
+    "updated_by": "user18",
+    "inherited_acl": false,
+    "attributes": {
+      "design_phase": "final"
+    }
+  },
+  {
+    "id": "res14",
+    "name": "Environmental Impact Report",
+    "description": "Annual environmental impact report for GreenEnergy operations",
+    "type": "DOCUMENT",
+    "type_id": "RT001",
+    "uri": "/documents/compliance/env-impact-2023.pdf",
+    "organization_id": "org3",
+    "department_id": "dept7",
+    "owner_id": "user19",
+    "status": "active",
+    "version": 1,
+    "tags": ["environmental", "compliance", "annual-report"],
+    "metadata": {
+      "report_year": "2023"
+    },
+    "attribute_group_id": "AG001",
+    "sensitivity": "internal",
+    "classification": "general",
+    "location": "compliance-server",
+    "format": "pdf",
+    "size": 8388608,
+    "created_at": "2023-06-30T09:00:00Z",
+    "updated_at": "2023-06-30T09:00:00Z",
+    "created_by": "user19",
+    "updated_by": "user19",
+    "inherited_acl": false,
+    "attributes": {
+      "report_year": "2023"
+    }
+  },
+  {
+    "id": "res15",
+    "name": "Equipment Maintenance Logs",
+    "description": "Maintenance logs for all GreenEnergy operational equipment",
+    "type": "SPREADSHEET",
+    "type_id": "RT005",
+    "uri": "/documents/operations/maintenance-logs-2023.xlsx",
+    "organization_id": "org3",
+    "department_id": "dept7",
+    "owner_id": "user20",
+    "status": "active",
+    "version": 12,
+    "tags": ["maintenance", "operations", "equipment"],
+    "metadata": {
+      "last_updated": "2023-07-15"
+    },
+    "attribute_group_id": "AG005",
+    "sensitivity": "internal",
+    "classification": "general",
+    "location": "operations-server",
+    "format": "xlsx",
+    "size": 3145728,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-07-15T18:30:00Z",
+    "created_by": "user20",
+    "updated_by": "user20",
+    "inherited_acl": false,
+    "attributes": {
+      "last_updated": "2023-07-15"
+    }
+  },
+  {
+    "id": "res16",
+    "name": "Corporate Communication Guidelines",
+    "description": "Official guidelines for all corporate communications",
+    "type": "DOCUMENT",
+    "type_id": "RT001",
+    "uri": "/documents/marketing/comm-guidelines-v2.pdf",
+    "organization_id": "org1",
+    "department_id": "dept3",
+    "owner_id": "user7",
+    "status": "active",
+    "version": 2,
+    "tags": ["marketing", "communications", "branding"],
+    "metadata": {
+      "last_updated": "2023-04-01"
+    },
+    "attribute_group_id": "AG001",
+    "sensitivity": "internal",
+    "classification": "general",
+    "location": "marketing-server",
+    "format": "pdf",
+    "size": 4194304,
+    "created_at": "2023-01-15T10:00:00Z",
+    "updated_at": "2023-04-01T14:30:00Z",
+    "created_by": "user7",
+    "updated_by": "user7",
+    "inherited_acl": false,
+    "attributes": {
+      "last_updated": "2023-04-01"
+    }
+  },
+  {
+    "id": "res17",
+    "name": "Security Incident Reports",
+    "description": "Log of all security incidents and responses",
+    "type": "DOCUMENT",
+    "type_id": "RT001",
+    "uri": "/documents/it/security-incidents-2023.docx",
+    "organization_id": "org1",
+    "department_id": "dept1",
+    "owner_id": "user1",
+    "status": "active",
+    "version": 5,
+    "tags": ["security", "incidents", "confidential"],
+    "metadata": {
+      "incident_count": "23"
+    },
+    "attribute_group_id": "AG006",
+    "sensitivity": "confidential",
+    "classification": "restricted",
+    "location": "security-server",
+    "format": "docx",
+    "size": 2097152,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-07-15T23:59:59Z",
+    "created_by": "user1",
+    "updated_by": "user1",
+    "inherited_acl": false,
+    "attributes": {
+      "incident_count": "23"
+    }
+  },
+  {
+    "id": "res18",
+    "name": "Clinical Trial Data",
+    "description": "Data from ongoing clinical trials",
+    "type": "DATABASE",
+    "type_id": "RT007",
+    "uri": "jdbc:postgresql://healthfirst.com/clinical_trials",
+    "organization_id": "org2",
+    "department_id": "dept6",
+    "owner_id": "user13",
+    "status": "active",
+    "version": 1,
+    "tags": ["medical", "research", "confidential"],
+    "metadata": {
+      "trial_count": "5"
+    },
+    "attribute_group_id": "AG005",
+    "sensitivity": "highly-confidential",
+    "classification": "restricted",
+    "location": "research-db-server",
+    "format": "postgresql",
+    "size": 107374182400,
+    "created_at": "2023-02-01T00:00:00Z",
+    "updated_at": "2023-07-15T23:59:59Z",
+    "created_by": "user13",
+    "updated_by": "user13",
+    "inherited_acl": false,
+    "attributes": {
+      "trial_count": "5"
+    }
+  },
+  {
+    "id": "res19",
+    "name": "Energy Consumption Analytics",
+    "description": "Analytics dashboard for energy consumption patterns",
+    "type": "WEB_APPLICATION",
+    "type_id": "RT009",
+    "uri": "https://analytics.greenenergy.com",
+    "organization_id": "org3",
+    "department_id": "dept7",
+    "owner_id": "user19",
+    "status": "active",
+    "version": 3,
+    "tags": ["analytics", "energy", "operations"],
+    "metadata": {
+      "data_refresh_rate": "hourly"
+    },
+    "attribute_group_id": "AG010",
+    "sensitivity": "internal",
+    "classification": "general",
+    "location": "web-server-01",
+    "format": "web",
+    "size": 0,
+    "created_at": "2023-03-01T00:00:00Z",
+    "updated_at": "2023-07-10T12:00:00Z",
+    "created_by": "user19",
+    "updated_by": "user19",
+    "inherited_acl": false,
+    "attributes": {
+      "data_refresh_rate": "hourly"
+    }
+  },
+  {
+    "id": "res20",
+    "name": "Vendor Contracts",
+    "description": "Repository of all vendor contracts",
+    "type": "DOCUMENT",
+    "type_id": "RT001",
+    "uri": "/documents/legal/vendor-contracts/",
+    "organization_id": "org1",
+    "department_id": "dept2",
+    "owner_id": "user10",
+    "status": "active",
+    "version": 1,
+    "tags": ["legal", "contracts", "confidential"],
+    "metadata": {
+      "contract_count": "50+"
+    },
+    "attribute_group_id": "AG008",
+    "sensitivity": "confidential",
+    "classification": "restricted",
+    "location": "legal-server",
+    "format": "pdf",
+    "size": 104857600,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-07-15T23:59:59Z",
+    "created_by": "user10",
+    "updated_by": "user10",
+    "inherited_acl": false,
+    "attributes": {
+      "contract_count": "50+"
+    }
+  }
+]

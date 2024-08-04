@@ -80,13 +80,13 @@ func (dao *RoleDAO) CreateRole(ctx context.Context, role model.Role) (string, er
 		if role.DepartmentID != "" {
 			query += `
 				SET r.departmentID = $departmentID
-			`
+				`
 		}
 
 		if len(role.Attributes) > 0 {
 			query += `
 				SET r.attributes = $attributes
-			`
+				`
 		}
 
 		query += `
@@ -131,7 +131,9 @@ func (dao *RoleDAO) CreateRole(ctx context.Context, role model.Role) (string, er
 		}
 
 		if len(role.Attributes) > 0 {
-			params["attributes"] = role.Attributes
+			// Parse attributes to JSON string
+			attributesJSON, _ := json.Marshal(role.Attributes)
+			params["attributes"] = string(attributesJSON)
 		}
 
 		if len(role.Permissions) > 0 {
@@ -150,8 +152,13 @@ func (dao *RoleDAO) CreateRole(ctx context.Context, role model.Role) (string, er
 		}
 
 		if result.Next() {
+			logger.Info("Role created successfully", zap.String("roleID", role.ID))
+			logger.Info("Found role ID in result", zap.Any("result", result.Record().Values[0]))
 			return result.Record().Values[0], nil
 		}
+
+		logger.Error("Failed to create role", zap.Error(err))
+		logger.Error("Result is empty", zap.Any("result", result))
 
 		return nil, echo_errors.ErrInternalServer
 	})
@@ -511,8 +518,15 @@ func mapNodeToRole(node neo4j.Node) (*model.Role, error) {
 	if departmentID, ok := props["departmentID"]; ok {
 		role.DepartmentID = departmentID.(string)
 	}
-	role.CreatedAt = helper_util.ParseTime(props["createdAt"].(string))
-	role.UpdatedAt = helper_util.ParseTime(props["updatedAt"].(string))
+	if attributes, ok := props["attributes"]; ok {
+		attributesMap := make(map[string]string)
+		if err := json.Unmarshal([]byte(attributes.(string)), &attributesMap); err != nil {
+			return nil, err
+		}
+		role.Attributes = attributesMap
+	}
+	role.CreatedAt, _ = helper_util.ParseTime(props["createdAt"].(string))
+	role.UpdatedAt, _ = helper_util.ParseTime(props["updatedAt"].(string))
 
 	return role, nil
 }

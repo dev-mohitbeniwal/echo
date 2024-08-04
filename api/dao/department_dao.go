@@ -418,8 +418,8 @@ func mapNodeToDepartment(node neo4j.Node) (*model.Department, error) {
 	if parentID, ok := props["parentID"].(string); ok {
 		dept.ParentID = parentID
 	}
-	dept.CreatedAt = helper_util.ParseTime(props["createdAt"].(string))
-	dept.UpdatedAt = helper_util.ParseTime(props["updatedAt"].(string))
+	dept.CreatedAt, _ = helper_util.ParseTime(props["createdAt"].(string))
+	dept.UpdatedAt, _ = helper_util.ParseTime(props["updatedAt"].(string))
 
 	return dept, nil
 }

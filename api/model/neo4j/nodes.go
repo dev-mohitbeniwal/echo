@@ -16,13 +16,19 @@ const (
 	LabelRole = "ROLE"
 
 	// LabelPermission represents a specific permission in the system
-	LabelPermission = "` + echo_neo4j.LabelPermission + `"
+	LabelPermission = "PERMISSION"
 
 	// LabelResource represents a resource that can be accessed in the system
 	LabelResource = "RESOURCE"
 
 	// LabelPolicy represents an access control policy
 	LabelPolicy = "POLICY"
+
+	// LabelResourceType represents a type of resource
+	LabelResourceType = "RESOURCE_TYPE"
+
+	// LabelAttributeGroup represents a group of attributes
+	LabelAttributeGroup = "ATTRIBUTE_GROUP"
 
 	// LabelAttribute represents an attribute used in ABAC policies
 	LabelAttribute = "ATTRIBUTE"

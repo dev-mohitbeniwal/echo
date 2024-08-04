@@ -104,3 +104,48 @@ func (c *CacheService) DeletePermission(ctx context.Context, permissionID string
 func (c *CacheService) GetPermission(ctx context.Context, permissionID string) (*model.Permission, error) {
 	return db.GetCachedPermission(ctx, permissionID)
 }
+
+// SetResource
+func (c *CacheService) SetResource(ctx context.Context, resource model.Resource) error {
+	return db.CacheResource(ctx, &resource)
+}
+
+// DeleteResource
+func (c *CacheService) DeleteResource(ctx context.Context, resourceID string) error {
+	return db.DeleteCachedResource(ctx, resourceID)
+}
+
+// GetResource
+func (c *CacheService) GetResource(ctx context.Context, resourceID string) (*model.Resource, error) {
+	return db.GetCachedResource(ctx, resourceID)
+}
+
+// GetResourceType
+func (c *CacheService) GetResourceType(ctx context.Context, resourceTypeID string) (*model.ResourceType, error) {
+	return db.GetCachedResourceType(ctx, resourceTypeID)
+}
+
+// SetResourceType
+func (c *CacheService) SetResourceType(ctx context.Context, resourceType model.ResourceType) error {
+	return db.CacheResourceType(ctx, &resourceType)
+}
+
+// DeleteResourceType
+func (c *CacheService) DeleteResourceType(ctx context.Context, resourceTypeID string) error {
+	return db.DeleteCachedResourceType(ctx, resourceTypeID)
+}
+
+// SetAttributeGroup
+func (c *CacheService) SetAttributeGroup(ctx context.Context, attributeGroup model.AttributeGroup) error {
+	return db.CacheAttributeGroup(ctx, &attributeGroup)
+}
+
+// DeleteAttributeGroup
+func (c *CacheService) DeleteAttributeGroup(ctx context.Context, attributeGroupID string) error {
+	return db.DeleteCachedAttributeGroup(ctx, attributeGroupID)
+}
+
+// GetAttributeGroup
+func (c *CacheService) GetAttributeGroup(ctx context.Context, attributeGroupID string) (*model.AttributeGroup, error) {
+	return db.GetCachedAttributeGroup(ctx, attributeGroupID)
+}

@@ -445,6 +445,156 @@ func GetCachedPermission(ctx context.Context, permissionID string) (*model.Permi
 	return &permission, nil
 }
 
+// CacheResource
+func CacheResource(ctx context.Context, resource *model.Resource) error {
+	resourceJSON, err := json.Marshal(resource)
+	if err != nil {
+		return fmt.Errorf("failed to marshal resource: %w", err)
+	}
+
+	key := fmt.Sprintf("resource:%s", resource.ID)
+	defaultTTL := viper.GetDuration("redis.defaultCacheTTL")
+	err = RedisClient.Set(ctx, key, resourceJSON, defaultTTL).Err()
+	if err != nil {
+		return fmt.Errorf("failed to cache resource: %w", err)
+	}
+
+	logger.Debug("Resource cached successfully", zap.String("resourceID", resource.ID))
+	return nil
+}
+
+// DeleteResource
+func DeleteCachedResource(ctx context.Context, resourceID string) error {
+	key := fmt.Sprintf("resource:%s", resourceID)
+	err := RedisClient.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete resource from cache: %w", err)
+	}
+	logger.Debug("Resource deleted from cache", zap.String("resourceID", resourceID))
+	return nil
+}
+
+// GetResource
+func GetCachedResource(ctx context.Context, resourceID string) (*model.Resource, error) {
+	key := fmt.Sprintf("resource:%s", resourceID)
+	resourceJSON, err := RedisClient.Get(ctx, key).Result()
+	if err == redis.Nil {
+		logger.Debug("Resource not found in cache", zap.String("resourceID", resourceID))
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to get resource from cache: %w", err)
+	}
+
+	var resource model.Resource
+	err = json.Unmarshal([]byte(resourceJSON), &resource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal resource: %w", err)
+	}
+
+	logger.Debug("Resource retrieved from cache", zap.String("resourceID", resourceID))
+	return &resource, nil
+}
+
+// GetCachedResourceType
+func GetCachedResourceType(ctx context.Context, resourceTypeID string) (*model.ResourceType, error) {
+	key := fmt.Sprintf("resourceType:%s", resourceTypeID)
+	resourceTypeJSON, err := RedisClient.Get(ctx, key).Result()
+	if err == redis.Nil {
+		logger.Debug("ResourceType not found in cache", zap.String("resourceTypeID", resourceTypeID))
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to get resourceType from cache: %w", err)
+	}
+
+	var resourceType model.ResourceType
+	err = json.Unmarshal([]byte(resourceTypeJSON), &resourceType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal resourceType: %w", err)
+	}
+
+	logger.Debug("ResourceType retrieved from cache", zap.String("resourceTypeID", resourceTypeID))
+	return &resourceType, nil
+}
+
+// CacheResourceType
+func CacheResourceType(ctx context.Context, resourceType *model.ResourceType) error {
+	resourceTypeJSON, err := json.Marshal(resourceType)
+	if err != nil {
+		return fmt.Errorf("failed to marshal resourceType: %w", err)
+	}
+
+	key := fmt.Sprintf("resourceType:%s", resourceType.ID)
+	defaultTTL := viper.GetDuration("redis.defaultCacheTTL")
+	err = RedisClient.Set(ctx, key, resourceTypeJSON, defaultTTL).Err()
+	if err != nil {
+		return fmt.Errorf("failed to cache resourceType: %w", err)
+	}
+
+	logger.Debug("ResourceType cached successfully", zap.String("resourceTypeID", resourceType.ID))
+	return nil
+}
+
+// DeleteResourceType
+func DeleteCachedResourceType(ctx context.Context, resourceTypeID string) error {
+	key := fmt.Sprintf("resourceType:%s", resourceTypeID)
+	err := RedisClient.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete resourceType from cache: %w", err)
+	}
+	logger.Debug("ResourceType deleted from cache", zap.String("resourceTypeID", resourceTypeID))
+	return nil
+}
+
+// CacheAttributeGroup
+func CacheAttributeGroup(ctx context.Context, attributeGroup *model.AttributeGroup) error {
+	attributeGroupJSON, err := json.Marshal(attributeGroup)
+	if err != nil {
+		return fmt.Errorf("failed to marshal attributeGroup: %w", err)
+	}
+
+	key := fmt.Sprintf("attributeGroup:%s", attributeGroup.ID)
+	defaultTTL := viper.GetDuration("redis.defaultCacheTTL")
+	err = RedisClient.Set(ctx, key, attributeGroupJSON, defaultTTL).Err()
+	if err != nil {
+		return fmt.Errorf("failed to cache attributeGroup: %w", err)
+	}
+
+	logger.Debug("AttributeGroup cached successfully", zap.String("attributeGroupID", attributeGroup.ID))
+	return nil
+}
+
+// DeleteAttributeGroup
+func DeleteCachedAttributeGroup(ctx context.Context, attributeGroupID string) error {
+	key := fmt.Sprintf("attributeGroup:%s", attributeGroupID)
+	err := RedisClient.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete attributeGroup from cache: %w", err)
+	}
+	logger.Debug("AttributeGroup deleted from cache", zap.String("attributeGroupID", attributeGroupID))
+	return nil
+}
+
+// GetAttributeGroup
+func GetCachedAttributeGroup(ctx context.Context, attributeGroupID string) (*model.AttributeGroup, error) {
+	key := fmt.Sprintf("attributeGroup:%s", attributeGroupID)
+	attributeGroupJSON, err := RedisClient.Get(ctx, key).Result()
+	if err == redis.Nil {
+		logger.Debug("AttributeGroup not found in cache", zap.String("attributeGroupID", attributeGroupID))
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to get attributeGroup from cache: %w", err)
+	}
+
+	var attributeGroup model.AttributeGroup
+	err = json.Unmarshal([]byte(attributeGroupJSON), &attributeGroup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal attributeGroup: %w", err)
+	}
+
+	logger.Debug("AttributeGroup retrieved from cache", zap.String("attributeGroupID", attributeGroupID))
+	return &attributeGroup, nil
+}
+
 func RateLimit(ctx context.Context, key string, limit int, per time.Duration) (bool, error) {
 	pipe := RedisClient.Pipeline()
 	now := time.Now().UnixNano()

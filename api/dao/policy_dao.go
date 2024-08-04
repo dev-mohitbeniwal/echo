@@ -66,7 +66,6 @@ func (dao *PolicyDAO) EnsureUniqueConstraint(ctx context.Context) error {
 }
 
 // CreatePolicy creates a new policy node in Neo4j
-// CreatePolicy creates a new policy node in Neo4j
 func (dao *PolicyDAO) CreatePolicy(ctx context.Context, policy model.Policy, userID string) (string, error) {
 	start := time.Now()
 	logger.Info("Creating new policy", zap.String("policyName", policy.Name))
@@ -99,29 +98,34 @@ func (dao *PolicyDAO) CreatePolicy(ctx context.Context, policy model.Policy, use
             RETURN p.id as id
         `
 
-		// Convert subjects, resources, actions, and conditions to JSON strings
+		// Convert subjects, resourceTypes, attributeGroups, actions, conditions, and dynamicAttributes to JSON strings
 		subjectsJSON, _ := json.Marshal(policy.Subjects)
-		resourcesJSON, _ := json.Marshal(policy.Resources)
+		resourceTypesJSON, _ := json.Marshal(policy.ResourceTypes)
+		attributeGroupsJSON, _ := json.Marshal(policy.AttributeGroups)
 		actionsJSON, _ := json.Marshal(policy.Actions)
 		conditionsJSON, _ := json.Marshal(policy.Conditions)
+		dynamicAttributesJSON, _ := json.Marshal(policy.DynamicAttributes)
 
 		parameters := map[string]interface{}{
 			"id": policy.ID,
 			"props": map[string]interface{}{
-				"name":             policy.Name,
-				"description":      policy.Description,
-				"effect":           policy.Effect,
-				"priority":         policy.Priority,
-				"version":          policy.Version,
-				"createdAt":        time.Now().Format(time.RFC3339),
-				"updatedAt":        time.Now().Format(time.RFC3339),
-				"active":           policy.Active,
-				"activationDate":   formatNullableTime(policy.ActivationDate),
-				"deactivationDate": formatNullableTime(policy.DeactivationDate),
-				"subjects":         string(subjectsJSON),
-				"resources":        string(resourcesJSON),
-				"actions":          string(actionsJSON),
-				"conditions":       string(conditionsJSON),
+				"name":              policy.Name,
+				"description":       policy.Description,
+				"effect":            policy.Effect,
+				"priority":          policy.Priority,
+				"version":           policy.Version,
+				"parentPolicyID":    policy.ParentPolicyID,
+				"createdAt":         policy.CreatedAt.Format(time.RFC3339),
+				"updatedAt":         policy.UpdatedAt.Format(time.RFC3339),
+				"active":            policy.Active,
+				"activationDate":    formatNullableTime(policy.ActivationDate),
+				"deactivationDate":  formatNullableTime(policy.DeactivationDate),
+				"subjects":          string(subjectsJSON),
+				"resourceTypes":     string(resourceTypesJSON),
+				"attributeGroups":   string(attributeGroupsJSON),
+				"actions":           string(actionsJSON),
+				"conditions":        string(conditionsJSON),
+				"dynamicAttributes": string(dynamicAttributesJSON),
 			},
 		}
 		createResult, err := transaction.Run(createQuery, parameters)
@@ -160,6 +164,25 @@ func (dao *PolicyDAO) CreatePolicy(ctx context.Context, policy model.Policy, use
 					return nil, fmt.Errorf("failed to create user relationships: %w", err)
 				}
 			}
+		}
+
+		// Create relationships for resource types and attribute groups
+		_, err = transaction.Run(`
+			MATCH (p:`+echo_neo4j.LabelPolicy+` {id: $policyID})
+			UNWIND $resourceTypes AS resourceTypeID
+			MATCH (rt:`+echo_neo4j.LabelResourceType+` {id: resourceTypeID})
+			MERGE (p)-[:`+echo_neo4j.RelAppliesTo+`]->(rt)
+			WITH p
+			UNWIND $attributeGroups AS attributeGroupID
+			MATCH (ag:`+echo_neo4j.LabelAttributeGroup+` {id: attributeGroupID})
+			MERGE (p)-[:`+echo_neo4j.RelAppliesTo+`]->(ag)
+		`, map[string]interface{}{
+			"policyID":        policy.ID,
+			"resourceTypes":   policy.ResourceTypes,
+			"attributeGroups": policy.AttributeGroups,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create resource type and attribute group relationships: %w", err)
 		}
 
 		return id, nil
@@ -213,29 +236,35 @@ func (dao *PolicyDAO) UpdatePolicy(ctx context.Context, policy model.Policy, use
 		query := `
 				MATCH (p:` + echo_neo4j.LabelPolicy + ` {id: $id})
 				SET p.name = $name, p.description = $description, p.effect = $effect,
-					p.priority = $priority, p.version = $version, p.updatedAt = $updatedAt, p.createdAt = $createdAt,
+					p.priority = $priority, p.version = $version, p.updatedAt = $updatedAt,
 					p.active = $active, p.activationDate = $activationDate, p.deactivationDate = $deactivationDate,
-					p.subjects = $subjects, p.resources = $resources, p.actions = $actions, p.conditions = $conditions
+					p.subjects = $subjects, p.resourceTypes = $resourceTypes, p.attributeGroups = $attributeGroups, 
+					p.actions = $actions, p.conditions = $conditions, p.dynamicAttributes = $dynamicAttributes,
+					p.parentPolicyID = $parentPolicyID
 				RETURN p
 				`
 
-		// Convert subjects, resources, actions, and conditions to JSON strings
+		// Convert complex types to JSON strings
 		subjectsJSON, _ := json.Marshal(policy.Subjects)
-		resourcesJSON, _ := json.Marshal(policy.Resources)
+		resourceTypesJSON, _ := json.Marshal(policy.ResourceTypes)
+		attributeGroupsJSON, _ := json.Marshal(policy.AttributeGroups)
 		actionsJSON, _ := json.Marshal(policy.Actions)
 		conditionsJSON, _ := json.Marshal(policy.Conditions)
+		dynamicAttributesJSON, _ := json.Marshal(policy.DynamicAttributes)
 
 		parameters := map[string]interface{}{
 			"id": policy.ID, "name": policy.Name, "description": policy.Description,
 			"effect": policy.Effect, "priority": policy.Priority, "version": policy.Version,
 			"updatedAt": time.Now().Format(time.RFC3339),
-			"createdAt": oldPolicy.CreatedAt.Format(time.RFC3339),
 			"active":    policy.Active, "activationDate": formatNullableTime(policy.ActivationDate),
-			"deactivationDate": formatNullableTime(policy.DeactivationDate),
-			"subjects":         string(subjectsJSON),
-			"resources":        string(resourcesJSON),
-			"actions":          string(actionsJSON),
-			"conditions":       string(conditionsJSON),
+			"deactivationDate":  formatNullableTime(policy.DeactivationDate),
+			"subjects":          string(subjectsJSON),
+			"resourceTypes":     string(resourceTypesJSON),
+			"attributeGroups":   string(attributeGroupsJSON),
+			"actions":           string(actionsJSON),
+			"conditions":        string(conditionsJSON),
+			"dynamicAttributes": string(dynamicAttributesJSON),
+			"parentPolicyID":    policy.ParentPolicyID,
 		}
 		result, err := transaction.Run(query, parameters)
 		if err != nil {
@@ -274,6 +303,30 @@ func (dao *PolicyDAO) UpdatePolicy(ctx context.Context, policy model.Policy, use
 					return nil, fmt.Errorf("failed to update user relationships: %w", err)
 				}
 			}
+		}
+
+		// Update relationships for resource types and attribute groups
+		_, err = transaction.Run(`
+			MATCH (p:`+echo_neo4j.LabelPolicy+` {id: $policyID})
+			// Remove old relationships
+			OPTIONAL MATCH (p)-[r:`+echo_neo4j.RelAppliesTo+`]->()
+			DELETE r
+			// Create new relationships
+			WITH p
+			UNWIND $resourceTypes AS resourceTypeID
+			MATCH (rt:`+echo_neo4j.LabelResourceType+` {id: resourceTypeID})
+			MERGE (p)-[:`+echo_neo4j.RelAppliesTo+`]->(rt)
+			WITH p
+			UNWIND $attributeGroups AS attributeGroupID
+			MATCH (ag:`+echo_neo4j.LabelAttributeGroup+` {id: attributeGroupID})
+			MERGE (p)-[:`+echo_neo4j.RelAppliesTo+`]->(ag)
+		`, map[string]interface{}{
+			"policyID":        policy.ID,
+			"resourceTypes":   policy.ResourceTypes,
+			"attributeGroups": policy.AttributeGroups,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to update resource type and attribute group relationships: %w", err)
 		}
 
 		return nil, nil
@@ -665,6 +718,13 @@ func mapNodeToPolicy(node neo4j.Node) (*model.Policy, error) {
 		return nil, fmt.Errorf("failed to assert type for policy version: %v", props["version"])
 	}
 
+	// ParentPolicyID
+	if parentPolicyID, ok := props["parentPolicyID"].(string); ok {
+		policy.ParentPolicyID = parentPolicyID
+	} else {
+		logger.Warn("Parent policy ID not found or null", zap.Any("ParentPolicyID", props["parentPolicyID"]))
+	}
+
 	// CreatedAt
 	if createdAt, ok := props["createdAt"].(string); ok {
 		policy.CreatedAt = parseTime(createdAt)
@@ -709,13 +769,22 @@ func mapNodeToPolicy(node neo4j.Node) (*model.Policy, error) {
 		return nil, fmt.Errorf("failed to assert type for policy subjects: %v", props["subjects"])
 	}
 
-	// Resources
-	if resourcesJSON, ok := props["resources"].(string); ok {
-		if err := json.Unmarshal([]byte(resourcesJSON), &policy.Resources); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal policy resources: %w", err)
+	// ResourceTypes
+	if resourceTypesJSON, ok := props["resourceTypes"].(string); ok {
+		if err := json.Unmarshal([]byte(resourceTypesJSON), &policy.ResourceTypes); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal policy resource types: %w", err)
 		}
 	} else {
-		return nil, fmt.Errorf("failed to assert type for policy resources: %v", props["resources"])
+		return nil, fmt.Errorf("failed to assert type for policy resource types: %v", props["resourceTypes"])
+	}
+
+	// AttributeGroups
+	if attributeGroupsJSON, ok := props["attributeGroups"].(string); ok {
+		if err := json.Unmarshal([]byte(attributeGroupsJSON), &policy.AttributeGroups); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal policy attribute groups: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("failed to assert type for policy attribute groups: %v", props["attributeGroups"])
 	}
 
 	// Actions
@@ -734,6 +803,15 @@ func mapNodeToPolicy(node neo4j.Node) (*model.Policy, error) {
 		}
 	} else {
 		return nil, fmt.Errorf("failed to assert type for policy conditions: %v", props["conditions"])
+	}
+
+	// DynamicAttributes
+	if dynamicAttributesJSON, ok := props["dynamicAttributes"].(string); ok {
+		if err := json.Unmarshal([]byte(dynamicAttributesJSON), &policy.DynamicAttributes); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal policy dynamic attributes: %w", err)
+		}
+	} else {
+		logger.Warn("Dynamic attributes not found or null", zap.Any("DynamicAttributes", props["dynamicAttributes"]))
 	}
 
 	return policy, nil

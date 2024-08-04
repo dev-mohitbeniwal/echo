@@ -11,12 +11,14 @@ type Policy struct {
 	Description       string      `json:"description"`
 	Effect            string      `json:"effect"` // "allow" or "deny"
 	Subjects          []Subject   `json:"subjects"`
-	Resources         []Resource  `json:"resources"`
+	ResourceTypes     []string    `json:"resource_types"`
+	AttributeGroups   []string    `json:"attribute_groups"`
 	Actions           []string    `json:"actions"`
 	Conditions        []Condition `json:"conditions"`
 	DynamicAttributes []string    `json:"dynamic_attributes,omitempty"`
 	Priority          int         `json:"priority"`
 	Version           int         `json:"version"`
+	ParentPolicyID    string      `json:"parent_policy_id,omitempty"`
 	CreatedAt         time.Time   `json:"created_at"`
 	UpdatedAt         time.Time   `json:"updated_at"`
 	Active            bool        `json:"active"`
@@ -27,11 +29,6 @@ type Policy struct {
 type Subject struct {
 	Type       string            `json:"type"` // e.g., "user", "role", "group"
 	UserID     string            `json:"user_id,omitempty"`
-	Attributes map[string]string `json:"attributes"`
-}
-
-type Resource struct {
-	Type       string            `json:"type"` // e.g., "file", "database", "api"
 	Attributes map[string]string `json:"attributes"`
 }
 

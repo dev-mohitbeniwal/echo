@@ -27,7 +27,7 @@ func (v *ValidationUtil) ValidatePolicy(policy model.Policy) error {
 	if len(policy.Subjects) == 0 {
 		return fmt.Errorf("policy must have at least one subject")
 	}
-	if len(policy.Resources) == 0 {
+	if len(policy.ResourceTypes) == 0 {
 		return fmt.Errorf("policy must have at least one resource")
 	}
 	if len(policy.Actions) == 0 {
@@ -114,6 +114,54 @@ func (v *ValidationUtil) ValidatePermission(permission model.Permission) error {
 	}
 	if permission.Name == "" {
 		return fmt.Errorf("permission name cannot be empty")
+	}
+	// Add more validation rules as needed
+	return nil
+}
+
+// ValidateResource
+func (v *ValidationUtil) ValidateResource(resource model.Resource) error {
+	if resource.ID == "" {
+		return fmt.Errorf("resource ID cannot be empty")
+	}
+	if resource.Name == "" {
+		return fmt.Errorf("resource name cannot be empty")
+	}
+	if resource.Type == "" {
+		return fmt.Errorf("resource type cannot be empty")
+	}
+	if resource.OrganizationID == "" {
+		return fmt.Errorf("resource organization ID cannot be empty")
+	}
+	if resource.OwnerID == "" {
+		return fmt.Errorf("resource owner ID cannot be empty")
+	}
+	if resource.Status == "" {
+		return fmt.Errorf("resource status cannot be empty")
+	}
+	// Add more validation rules as needed
+	return nil
+}
+
+// ValidateResourceType
+func (v *ValidationUtil) ValidateResourceType(resourceType model.ResourceType) error {
+	if resourceType.ID == "" {
+		return fmt.Errorf("resource type ID cannot be empty")
+	}
+	if resourceType.Name == "" {
+		return fmt.Errorf("resource type name cannot be empty")
+	}
+	// Add more validation rules as needed
+	return nil
+}
+
+// ValidateAttributeGroup
+func (v *ValidationUtil) ValidateAttributeGroup(attributeGroup model.AttributeGroup) error {
+	if attributeGroup.ID == "" {
+		return fmt.Errorf("attribute group ID cannot be empty")
+	}
+	if attributeGroup.Name == "" {
+		return fmt.Errorf("attribute group name cannot be empty")
 	}
 	// Add more validation rules as needed
 	return nil

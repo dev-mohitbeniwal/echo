@@ -30,6 +30,9 @@ func SetupRouter(
 	controllers.Role.RegisterRoutes(api)
 	controllers.Group.RegisterRoutes(api)
 	controllers.Permission.RegisterRoutes(api)
+	controllers.Resource.RegisterRoutes(api)
+	controllers.ResourceType.RegisterRoutes(api)
+	controllers.AttributeGroup.RegisterRoutes(api)
 
 	return router
 }

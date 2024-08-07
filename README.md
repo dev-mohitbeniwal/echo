@@ -133,11 +133,3 @@ go test ./...
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contact
-
-[Mohit Beniwal] - [dev.mohitbeniwal@gmail.com]
-
-Project Link: https://github.com/dev-mohitbeniwal/echo
-This README provides a comprehensive overview of your project, including its features, technology stack, project structure, setup instructions, and other important information for potential users and contributors. You may want to adjust some details based on your specific implementation and preferences.
-Remember to create the mentioned CONTRIBUTING.md and LICENSE files, and to keep this README updated as your project evolves. You might also want to add badges (e.g., build status, code coverage, license) at the top of the README for quick reference.
